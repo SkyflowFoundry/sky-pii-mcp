@@ -1,0 +1,12 @@
+/msc/*
+node_modules
+node_modules/
+dist
+dist/
+dist/*
+.clinerules
+.DS_Store
+package-lock.json
+.env
+.env.local
+.env.*.local
