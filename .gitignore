@@ -4,6 +4,7 @@ node_modules/
 dist
 dist/
 dist/*
+.vscode/
 .clinerules
 .DS_Store
 package-lock.json
