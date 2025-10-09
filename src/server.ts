@@ -94,41 +94,41 @@ server.registerTool(
   }
 );
 
-// Add a static Resource
-server.registerResource(
-  "welcome",
-  "welcome://message",
-  {
-    title: "Welcome to Skyflow",
-    description: "A static welcome message",
-  },
-  async (uri) => ({
-    contents: [
-      {
-        uri: uri.href,
-        text: "Welcome to the Skyflow Streamable MCP Server. Don't DIY PII.",
-      },
-    ],
-  })
-);
+// // Add a static Resource
+// server.registerResource(
+//   "welcome",
+//   "welcome://message",
+//   {
+//     title: "Welcome to Skyflow",
+//     description: "A static welcome message",
+//   },
+//   async (uri) => ({
+//     contents: [
+//       {
+//         uri: uri.href,
+//         text: "Welcome to the Skyflow Streamable MCP Server. Don't DIY PII.",
+//       },
+//     ],
+//   })
+// );
 
-// Add a dynamic greeting Resource Template
-server.registerResource(
-  "greeting",
-  new ResourceTemplate("greeting://{name}", { list: undefined }),
-  {
-    title: "Greeting Resource",
-    description: "Dynamic greeting generator",
-  },
-  async (uri, { name }) => ({
-    contents: [
-      {
-        uri: uri.href,
-        text: `Hello, ${name}!`,
-      },
-    ],
-  })
-);
+// // Add a dynamic greeting Resource Template
+// server.registerResource(
+//   "greeting",
+//   new ResourceTemplate("greeting://{name}", { list: undefined }),
+//   {
+//     title: "Greeting Resource",
+//     description: "Dynamic greeting generator",
+//   },
+//   async (uri, { name }) => ({
+//     contents: [
+//       {
+//         uri: uri.href,
+//         text: `Hello, ${name}!`,
+//       },
+//     ],
+//   })
+// );
 
 // Set up Express and HTTP transport
 const app = express();
