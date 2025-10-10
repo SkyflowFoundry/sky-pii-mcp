@@ -1,5 +1,5 @@
-import dotenv from 'dotenv';
-dotenv.config({ path: '.env.local' });
+import dotenv from "dotenv";
+dotenv.config({ path: ".env.local" });
 import {
   McpServer,
   ResourceTemplate,
@@ -7,7 +7,14 @@ import {
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
 import express from "express";
 import { z } from "zod";
-import { DeidentifyTextOptions, DeidentifyTextRequest, ReidentifyTextRequest, TokenFormat, TokenType, Skyflow } from "skyflow-node";
+import {
+  DeidentifyTextOptions,
+  DeidentifyTextRequest,
+  ReidentifyTextRequest,
+  TokenFormat,
+  TokenType,
+  Skyflow,
+} from "skyflow-node";
 
 // Create an MCP server
 const server = new McpServer({
@@ -36,7 +43,8 @@ server.registerTool(
   "deidentify",
   {
     title: "Skyflow Deidentify Tool",
-    description: "Deidentify sensitive information in strings using Skyflow. This tool accepts a string and returns another string, but with placeholders for sensitive data. The placeholders tell you what they are replacing. For example, a credit card number might be replaced with [CREDIT_CARD].",
+    description:
+      "Deidentify sensitive information in strings using Skyflow. This tool accepts a string and returns another string, but with placeholders for sensitive data. The placeholders tell you what they are replacing. For example, a credit card number might be replaced with [CREDIT_CARD].",
     inputSchema: { inputString: z.string() },
     outputSchema: {
       processedText: z.string(),
@@ -47,9 +55,10 @@ server.registerTool(
   async ({ inputString }) => {
     const tokenFormat = new TokenFormat();
     tokenFormat.setDefault(TokenType.VAULT_TOKEN);
+
     const options = new DeidentifyTextOptions();
     options.setTokenFormat(tokenFormat);
-    
+
     const response = await skyflow
       .detect()
       .deidentifyText(new DeidentifyTextRequest(inputString), options);
@@ -72,8 +81,9 @@ server.registerTool(
   "reidentify",
   {
     title: "Skyflow Reidentify Tool",
-    description: "Reidentify previously redacted sensitive information in strings using Skyflow. This tool accepts a string with redacted placeholders (like [CREDIT_CARD]) and returns the original sensitive data.",
-    inputSchema: { inputString: z.string() },
+    description:
+      "Reidentify previously-deidentified sensitive information in strings using Skyflow. This tool accepts a string with redacted placeholders (like [CREDIT_CARD]) and returns the original sensitive data.",
+    inputSchema: { inputString: z.string().min(1) },
     outputSchema: {
       processedText: z.string(),
     },
@@ -94,43 +104,6 @@ server.registerTool(
   }
 );
 
-// // Add a static Resource
-// server.registerResource(
-//   "welcome",
-//   "welcome://message",
-//   {
-//     title: "Welcome to Skyflow",
-//     description: "A static welcome message",
-//   },
-//   async (uri) => ({
-//     contents: [
-//       {
-//         uri: uri.href,
-//         text: "Welcome to the Skyflow Streamable MCP Server. Don't DIY PII.",
-//       },
-//     ],
-//   })
-// );
-
-// // Add a dynamic greeting Resource Template
-// server.registerResource(
-//   "greeting",
-//   new ResourceTemplate("greeting://{name}", { list: undefined }),
-//   {
-//     title: "Greeting Resource",
-//     description: "Dynamic greeting generator",
-//   },
-//   async (uri, { name }) => ({
-//     contents: [
-//       {
-//         uri: uri.href,
-//         text: `Hello, ${name}!`,
-//       },
-//     ],
-//   })
-// );
-
-// Set up Express and HTTP transport
 const app = express();
 app.use(express.json());
 
@@ -152,7 +125,7 @@ app.post("/mcp", async (req, res) => {
 const port = parseInt(process.env.PORT || "3000");
 app
   .listen(port, () => {
-    console.log(`Demo MCP Server running on http://localhost:${port}/mcp`);
+    console.log(`Skyflow MCP Server running on http://localhost:${port}/mcp`);
   })
   .on("error", (error) => {
     console.error("Server error:", error);
