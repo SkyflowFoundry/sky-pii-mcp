@@ -100,17 +100,17 @@ const ENTITY_MAP: Record<string, DetectEntities> = {
   'organization_id': DetectEntities.ORGANIZATION_ID,
   'day': DetectEntities.DAY,
   'month': DetectEntities.MONTH,
-  'year': DetectEntities.YEAR,
+  // Note: 'year' entity is not available in the current skyflow-node version
 };
 
 /**
  * Type-safe mapping from string masking method names to MaskingMethod enum values.
  */
 const MASKING_METHOD_MAP: Record<string, MaskingMethod> = {
-  'BLACKBOX': MaskingMethod.BLACKBOX,
-  'PIXELATE': MaskingMethod.PIXELATE,
-  'BLUR': MaskingMethod.BLUR,
-  'REDACT': MaskingMethod.REDACT,
+  'BLACKBOX': MaskingMethod.Blackbox,
+  // Note: 'PIXELATE' is not available in the current skyflow-node version
+  'BLUR': MaskingMethod.Blur,
+  // Note: 'REDACT' is not available in the current skyflow-node version
 };
 
 /**
@@ -118,7 +118,7 @@ const MASKING_METHOD_MAP: Record<string, MaskingMethod> = {
  */
 const TRANSCRIPTION_MAP: Record<string, DetectOutputTranscription> = {
   'PLAINTEXT_TRANSCRIPTION': DetectOutputTranscription.PLAINTEXT_TRANSCRIPTION,
-  'REDACTED_TRANSCRIPTION': DetectOutputTranscription.REDACTED_TRANSCRIPTION,
+  'DIARIZED_TRANSCRIPTION': DetectOutputTranscription.DIARIZED_TRANSCRIPTION,
 };
 
 /** TypeScript interface for detected entity response items */
@@ -129,6 +129,7 @@ interface DetectedEntityItem {
 
 /** TypeScript interface for deidentify file output */
 interface DeidentifyFileOutput {
+  [x: string]: unknown;
   processedFileData?: string;
   mimeType?: string;
   extension?: string;
@@ -324,13 +325,12 @@ server.registerTool(
         "project",
         "organization_id",
         "day",
-        "month",
-        "year"
+        "month"
       ])).optional().describe("Specific entities to detect. Leave empty to detect all supported entities."),
-      maskingMethod: z.enum(["BLACKBOX", "PIXELATE", "BLUR", "REDACT"]).optional().describe("Masking method for images"),
+      maskingMethod: z.enum(["BLACKBOX", "BLUR"]).optional().describe("Masking method for images (BLACKBOX or BLUR)"),
       outputProcessedFile: z.boolean().optional().describe("Whether to include the processed file in the response"),
       outputOcrText: z.boolean().optional().describe("For images/PDFs: include OCR text in response"),
-      outputTranscription: z.enum(["PLAINTEXT_TRANSCRIPTION", "REDACTED_TRANSCRIPTION"]).optional().describe("For audio: type of transcription"),
+      outputTranscription: z.enum(["PLAINTEXT_TRANSCRIPTION", "DIARIZED_TRANSCRIPTION"]).optional().describe("For audio: type of transcription (PLAINTEXT_TRANSCRIPTION or DIARIZED_TRANSCRIPTION)"),
       pixelDensity: z.number().optional().describe("For PDFs: pixel density (default 300)"),
       maxResolution: z.number().optional().describe("For PDFs: max resolution (default 2000)"),
       waitTime: z.number().min(1).max(64).optional().describe("Wait time for response in seconds (max 64)"),
