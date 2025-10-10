@@ -10,7 +10,7 @@ This server demonstrates how to build a remote MCP server using the Streamable H
 
 - **Tools**:
   - `add`: Addition tool for adding two numbers
-  - `deidentify`: Skyflow deidentification tool for detecting and redacting sensitive information (PII, PHI, etc.)
+  - `dehydrate`: Skyflow dehydration tool for detecting and redacting sensitive information (PII, PHI, etc.)
 - **Resources**:
   - Static `welcome` resource with a welcome message
   - Dynamic `greeting` resource template for personalized greetings
@@ -84,18 +84,18 @@ curl -X POST http://localhost:3000/mcp \
   -d '{"jsonrpc":"2.0","method":"tools/call","params":{"name":"add","arguments":{"a":5,"b":3}},"id":2}'
 ```
 
-### Call the Deidentify Tool
+### Call the Dehydrate Tool
 
-Test calling the `deidentify` tool to redact sensitive information:
+Test calling the `dehydrate` tool to redact sensitive information:
 
 ```bash
 curl -X POST http://localhost:3000/mcp \
   -H "Content-Type: application/json" \
   -H "Accept: application/json, text/event-stream" \
-  -d '{"jsonrpc":"2.0","method":"tools/call","params":{"name":"deidentify","arguments":{"inputString":"My email is john.doe@example.com and my SSN is 123-45-6789"}},"id":2}'
+  -d '{"jsonrpc":"2.0","method":"tools/call","params":{"name":"dehydrate","arguments":{"inputString":"My email is john.doe@example.com and my SSN is 123-45-6789"}},"id":2}'
 ```
 
-This will return the deidentified text with sensitive data redacted, along with word and character counts.
+This will return the dehydrated text with sensitive data redacted, along with word and character counts.
 
 ### List Available Resources
 
@@ -141,7 +141,7 @@ To use this MCP server with Claude Desktop, add the following configuration to y
 After updating the config:
 1. Save the file
 2. Restart Claude Desktop completely (quit and reopen)
-3. The `add` and `deidentify` tools should now be available in Claude Desktop
+3. The `add` and `dehydrate` tools should now be available in Claude Desktop
 
 ## Architecture
 
