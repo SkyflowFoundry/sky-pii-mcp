@@ -620,10 +620,9 @@ const authenticateBearer = (
 
   const token = authHeader.substring(7); // Remove "Bearer " prefix
 
-  const tokensMatch = crypto.timingSafeEqual(
-    Buffer.from(token),
-    Buffer.from(requiredToken)
-  );
+  const tokensMatch =
+    token.length === requiredToken.length &&
+    crypto.timingSafeEqual(Buffer.from(token), Buffer.from(requiredToken));
 
   if (!tokensMatch) {
     return res.status(403).json({ error: "Invalid bearer token" });
