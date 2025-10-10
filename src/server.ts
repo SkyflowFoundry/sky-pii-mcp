@@ -24,7 +24,7 @@ import {
 } from "skyflow-node";
 import crypto from 'crypto';
 
-/** Default maximum wait time for file deidentification operations (in seconds) */
+/** Default maximum wait time for file dehydration operations (in seconds) */
 const DEFAULT_MAX_WAIT_TIME_SECONDS = 64;
 
 /**
@@ -128,7 +128,7 @@ interface DetectedEntityItem {
   extension: string;
 }
 
-/** TypeScript interface for deidentify file output */
+/** TypeScript interface for dehydrate file output */
 interface DeidentifyFileOutput {
   [x: string]: unknown;
   processedFileData?: string;
@@ -171,15 +171,15 @@ const skyflow = new Skyflow({
 });
 
 /**
- * Skyflow Deidentify Tool
+ * Skyflow Dehydrate Tool
  * Replaces sensitive information in text with placeholder tokens
  */
 server.registerTool(
-  "deidentify",
+  "dehydrate",
   {
-    title: "Skyflow Deidentify Tool",
+    title: "Skyflow Dehydrate Tool",
     description:
-      "Deidentify sensitive information in strings using Skyflow. This tool accepts a string and returns another string, but with placeholders for sensitive data. The placeholders tell you what they are replacing. For example, a credit card number might be replaced with [CREDIT_CARD].",
+      "Dehydrate sensitive information in strings using Skyflow. This tool accepts a string and returns another string, but with placeholders for sensitive data. The placeholders tell you what they are replacing. For example, a credit card number might be replaced with [CREDIT_CARD_abc123].",
     inputSchema: { inputString: z.string().min(1) },
     outputSchema: {
       processedText: z.string(),
@@ -212,15 +212,15 @@ server.registerTool(
 );
 
 /**
- * Skyflow Reidentify Tool
- * Restores original sensitive data from deidentified placeholders
+ * Skyflow Rehydrate Tool
+ * Restores original sensitive data from dehydrated placeholders
  */
 server.registerTool(
-  "reidentify",
+  "rehydrate",
   {
-    title: "Skyflow Reidentify Tool",
+    title: "Skyflow Rehydrate Tool",
     description:
-      "Reidentify previously deidentified sensitive information in strings using Skyflow. This tool accepts a string with redacted placeholders (like [CREDIT_CARD]) and returns the original sensitive data.",
+      "Rehydrate previously dehydrated sensitive information in strings using Skyflow. This tool accepts a string with redacted placeholders (like [CREDIT_CARD_abc123]) and returns the original sensitive data.",
     inputSchema: { inputString: z.string().min(1) },
     outputSchema: {
       processedText: z.string(),
@@ -243,16 +243,16 @@ server.registerTool(
 );
 
 /**
- * Skyflow Deidentify File Tool
+ * Skyflow Dehydrate File Tool
  * Processes files to detect and redact sensitive information
  * Maximum file size: 5MB (due to base64 encoding overhead, original binary files should be ~3.75MB or less)
  */
 server.registerTool(
-  "deidentify_file",
+  "dehydrate_file",
   {
-    title: "Skyflow Deidentify File Tool",
+    title: "Skyflow Dehydrate File Tool",
     description:
-      "Deidentify sensitive information in files (images, PDFs, audio, documents) using Skyflow. Accepts base64-encoded file data and returns the processed file with sensitive data redacted or masked. Maximum file size: 5MB (base64-encoded). Due to base64 encoding overhead, original binary files should be approximately 3.75MB or smaller.",
+      "Dehydrate sensitive information in files (images, PDFs, audio, documents) using Skyflow. Accepts base64-encoded file data and returns the processed file with sensitive data redacted or masked. Maximum file size: 5MB (base64-encoded). Due to base64 encoding overhead, original binary files should be approximately 3.75MB or smaller.",
     inputSchema: {
       fileData: z.string().min(1).describe("Base64-encoded file content"),
       fileName: z.string().describe("Original filename for type detection"),
