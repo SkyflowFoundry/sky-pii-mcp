@@ -22,6 +22,7 @@ import {
   MaskingMethod,
   DetectOutputTranscription,
 } from "skyflow-node";
+import crypto from 'crypto';
 
 /** Default maximum wait time for file deidentification operations (in seconds) */
 const DEFAULT_MAX_WAIT_TIME_SECONDS = 64;
@@ -31,75 +32,75 @@ const DEFAULT_MAX_WAIT_TIME_SECONDS = 64;
  * This ensures proper type checking and prevents runtime errors from invalid entity mappings.
  */
 const ENTITY_MAP: Record<string, DetectEntities> = {
-  'age': DetectEntities.AGE,
-  'bank_account': DetectEntities.BANK_ACCOUNT,
-  'credit_card': DetectEntities.CREDIT_CARD,
-  'credit_card_expiration': DetectEntities.CREDIT_CARD_EXPIRATION,
-  'cvv': DetectEntities.CVV,
-  'date': DetectEntities.DATE,
-  'date_interval': DetectEntities.DATE_INTERVAL,
-  'dob': DetectEntities.DOB,
-  'driver_license': DetectEntities.DRIVER_LICENSE,
-  'email_address': DetectEntities.EMAIL_ADDRESS,
-  'healthcare_number': DetectEntities.HEALTHCARE_NUMBER,
-  'ip_address': DetectEntities.IP_ADDRESS,
-  'location': DetectEntities.LOCATION,
-  'name': DetectEntities.NAME,
-  'numerical_pii': DetectEntities.NUMERICAL_PII,
-  'phone_number': DetectEntities.PHONE_NUMBER,
-  'ssn': DetectEntities.SSN,
-  'url': DetectEntities.URL,
-  'vehicle_id': DetectEntities.VEHICLE_ID,
-  'medical_code': DetectEntities.MEDICAL_CODE,
-  'name_family': DetectEntities.NAME_FAMILY,
-  'name_given': DetectEntities.NAME_GIVEN,
-  'account_number': DetectEntities.ACCOUNT_NUMBER,
-  'event': DetectEntities.EVENT,
-  'filename': DetectEntities.FILENAME,
-  'gender': DetectEntities.GENDER,
-  'language': DetectEntities.LANGUAGE,
-  'location_address': DetectEntities.LOCATION_ADDRESS,
-  'location_city': DetectEntities.LOCATION_CITY,
-  'location_coordinate': DetectEntities.LOCATION_COORDINATE,
-  'location_country': DetectEntities.LOCATION_COUNTRY,
-  'location_state': DetectEntities.LOCATION_STATE,
-  'location_zip': DetectEntities.LOCATION_ZIP,
-  'marital_status': DetectEntities.MARITAL_STATUS,
-  'money': DetectEntities.MONEY,
-  'name_medical_professional': DetectEntities.NAME_MEDICAL_PROFESSIONAL,
-  'occupation': DetectEntities.OCCUPATION,
-  'organization': DetectEntities.ORGANIZATION,
-  'organization_medical_facility': DetectEntities.ORGANIZATION_MEDICAL_FACILITY,
-  'origin': DetectEntities.ORIGIN,
-  'passport_number': DetectEntities.PASSPORT_NUMBER,
-  'password': DetectEntities.PASSWORD,
-  'physical_attribute': DetectEntities.PHYSICAL_ATTRIBUTE,
-  'political_affiliation': DetectEntities.POLITICAL_AFFILIATION,
-  'religion': DetectEntities.RELIGION,
-  'time': DetectEntities.TIME,
-  'username': DetectEntities.USERNAME,
-  'zodiac_sign': DetectEntities.ZODIAC_SIGN,
-  'blood_type': DetectEntities.BLOOD_TYPE,
-  'condition': DetectEntities.CONDITION,
-  'dose': DetectEntities.DOSE,
-  'drug': DetectEntities.DRUG,
-  'injury': DetectEntities.INJURY,
-  'medical_process': DetectEntities.MEDICAL_PROCESS,
-  'statistics': DetectEntities.STATISTICS,
-  'routing_number': DetectEntities.ROUTING_NUMBER,
-  'corporate_action': DetectEntities.CORPORATE_ACTION,
-  'financial_metric': DetectEntities.FINANCIAL_METRIC,
-  'product': DetectEntities.PRODUCT,
-  'trend': DetectEntities.TREND,
-  'duration': DetectEntities.DURATION,
-  'location_address_street': DetectEntities.LOCATION_ADDRESS_STREET,
-  'all': DetectEntities.ALL,
-  'sexuality': DetectEntities.SEXUALITY,
-  'effect': DetectEntities.EFFECT,
-  'project': DetectEntities.PROJECT,
-  'organization_id': DetectEntities.ORGANIZATION_ID,
-  'day': DetectEntities.DAY,
-  'month': DetectEntities.MONTH,
+  age: DetectEntities.AGE,
+  bank_account: DetectEntities.BANK_ACCOUNT,
+  credit_card: DetectEntities.CREDIT_CARD,
+  credit_card_expiration: DetectEntities.CREDIT_CARD_EXPIRATION,
+  cvv: DetectEntities.CVV,
+  date: DetectEntities.DATE,
+  date_interval: DetectEntities.DATE_INTERVAL,
+  dob: DetectEntities.DOB,
+  driver_license: DetectEntities.DRIVER_LICENSE,
+  email_address: DetectEntities.EMAIL_ADDRESS,
+  healthcare_number: DetectEntities.HEALTHCARE_NUMBER,
+  ip_address: DetectEntities.IP_ADDRESS,
+  location: DetectEntities.LOCATION,
+  name: DetectEntities.NAME,
+  numerical_pii: DetectEntities.NUMERICAL_PII,
+  phone_number: DetectEntities.PHONE_NUMBER,
+  ssn: DetectEntities.SSN,
+  url: DetectEntities.URL,
+  vehicle_id: DetectEntities.VEHICLE_ID,
+  medical_code: DetectEntities.MEDICAL_CODE,
+  name_family: DetectEntities.NAME_FAMILY,
+  name_given: DetectEntities.NAME_GIVEN,
+  account_number: DetectEntities.ACCOUNT_NUMBER,
+  event: DetectEntities.EVENT,
+  filename: DetectEntities.FILENAME,
+  gender: DetectEntities.GENDER,
+  language: DetectEntities.LANGUAGE,
+  location_address: DetectEntities.LOCATION_ADDRESS,
+  location_city: DetectEntities.LOCATION_CITY,
+  location_coordinate: DetectEntities.LOCATION_COORDINATE,
+  location_country: DetectEntities.LOCATION_COUNTRY,
+  location_state: DetectEntities.LOCATION_STATE,
+  location_zip: DetectEntities.LOCATION_ZIP,
+  marital_status: DetectEntities.MARITAL_STATUS,
+  money: DetectEntities.MONEY,
+  name_medical_professional: DetectEntities.NAME_MEDICAL_PROFESSIONAL,
+  occupation: DetectEntities.OCCUPATION,
+  organization: DetectEntities.ORGANIZATION,
+  organization_medical_facility: DetectEntities.ORGANIZATION_MEDICAL_FACILITY,
+  origin: DetectEntities.ORIGIN,
+  passport_number: DetectEntities.PASSPORT_NUMBER,
+  password: DetectEntities.PASSWORD,
+  physical_attribute: DetectEntities.PHYSICAL_ATTRIBUTE,
+  political_affiliation: DetectEntities.POLITICAL_AFFILIATION,
+  religion: DetectEntities.RELIGION,
+  time: DetectEntities.TIME,
+  username: DetectEntities.USERNAME,
+  zodiac_sign: DetectEntities.ZODIAC_SIGN,
+  blood_type: DetectEntities.BLOOD_TYPE,
+  condition: DetectEntities.CONDITION,
+  dose: DetectEntities.DOSE,
+  drug: DetectEntities.DRUG,
+  injury: DetectEntities.INJURY,
+  medical_process: DetectEntities.MEDICAL_PROCESS,
+  statistics: DetectEntities.STATISTICS,
+  routing_number: DetectEntities.ROUTING_NUMBER,
+  corporate_action: DetectEntities.CORPORATE_ACTION,
+  financial_metric: DetectEntities.FINANCIAL_METRIC,
+  product: DetectEntities.PRODUCT,
+  trend: DetectEntities.TREND,
+  duration: DetectEntities.DURATION,
+  location_address_street: DetectEntities.LOCATION_ADDRESS_STREET,
+  all: DetectEntities.ALL,
+  sexuality: DetectEntities.SEXUALITY,
+  effect: DetectEntities.EFFECT,
+  project: DetectEntities.PROJECT,
+  organization_id: DetectEntities.ORGANIZATION_ID,
+  day: DetectEntities.DAY,
+  month: DetectEntities.MONTH,
   // Note: 'year' entity is not available in the current skyflow-node version
 };
 
@@ -107,9 +108,9 @@ const ENTITY_MAP: Record<string, DetectEntities> = {
  * Type-safe mapping from string masking method names to MaskingMethod enum values.
  */
 const MASKING_METHOD_MAP: Record<string, MaskingMethod> = {
-  'BLACKBOX': MaskingMethod.Blackbox,
+  BLACKBOX: MaskingMethod.Blackbox,
   // Note: 'PIXELATE' is not available in the current skyflow-node version
-  'BLUR': MaskingMethod.Blur,
+  BLUR: MaskingMethod.Blur,
   // Note: 'REDACT' is not available in the current skyflow-node version
 };
 
@@ -117,8 +118,8 @@ const MASKING_METHOD_MAP: Record<string, MaskingMethod> = {
  * Type-safe mapping from string transcription names to DetectOutputTranscription enum values.
  */
 const TRANSCRIPTION_MAP: Record<string, DetectOutputTranscription> = {
-  'PLAINTEXT_TRANSCRIPTION': DetectOutputTranscription.PLAINTEXT_TRANSCRIPTION,
-  'DIARIZED_TRANSCRIPTION': DetectOutputTranscription.DIARIZED_TRANSCRIPTION,
+  PLAINTEXT_TRANSCRIPTION: DetectOutputTranscription.PLAINTEXT_TRANSCRIPTION,
+  DIARIZED_TRANSCRIPTION: DetectOutputTranscription.DIARIZED_TRANSCRIPTION,
 };
 
 /** TypeScript interface for detected entity response items */
@@ -255,105 +256,180 @@ server.registerTool(
     inputSchema: {
       fileData: z.string().min(1).describe("Base64-encoded file content"),
       fileName: z.string().describe("Original filename for type detection"),
-      mimeType: z.string().optional().describe("MIME type of the file (e.g., image/png, audio/mp3)"),
-      entities: z.array(z.enum([
-        "age",
-        "bank_account",
-        "credit_card",
-        "credit_card_expiration",
-        "cvv",
-        "date",
-        "date_interval",
-        "dob",
-        "driver_license",
-        "email_address",
-        "healthcare_number",
-        "ip_address",
-        "location",
-        "name",
-        "numerical_pii",
-        "phone_number",
-        "ssn",
-        "url",
-        "vehicle_id",
-        "medical_code",
-        "name_family",
-        "name_given",
-        "account_number",
-        "event",
-        "filename",
-        "gender",
-        "language",
-        "location_address",
-        "location_city",
-        "location_coordinate",
-        "location_country",
-        "location_state",
-        "location_zip",
-        "marital_status",
-        "money",
-        "name_medical_professional",
-        "occupation",
-        "organization",
-        "organization_medical_facility",
-        "origin",
-        "passport_number",
-        "password",
-        "physical_attribute",
-        "political_affiliation",
-        "religion",
-        "time",
-        "username",
-        "zodiac_sign",
-        "blood_type",
-        "condition",
-        "dose",
-        "drug",
-        "injury",
-        "medical_process",
-        "statistics",
-        "routing_number",
-        "corporate_action",
-        "financial_metric",
-        "product",
-        "trend",
-        "duration",
-        "location_address_street",
-        "all",
-        "sexuality",
-        "effect",
-        "project",
-        "organization_id",
-        "day",
-        "month"
-      ])).optional().describe("Specific entities to detect. Leave empty to detect all supported entities."),
-      maskingMethod: z.enum(["BLACKBOX", "BLUR"]).optional().describe("Masking method for images (BLACKBOX or BLUR)"),
-      outputProcessedFile: z.boolean().optional().describe("Whether to include the processed file in the response"),
-      outputOcrText: z.boolean().optional().describe("For images/PDFs: include OCR text in response"),
-      outputTranscription: z.enum(["PLAINTEXT_TRANSCRIPTION", "DIARIZED_TRANSCRIPTION"]).optional().describe("For audio: type of transcription (PLAINTEXT_TRANSCRIPTION or DIARIZED_TRANSCRIPTION)"),
-      pixelDensity: z.number().optional().describe("For PDFs: pixel density (default 300)"),
-      maxResolution: z.number().optional().describe("For PDFs: max resolution (default 2000)"),
-      waitTime: z.number().min(1).max(64).optional().describe("Wait time for response in seconds (max 64)"),
+      mimeType: z
+        .string()
+        .optional()
+        .describe("MIME type of the file (e.g., image/png, audio/mp3)"),
+      entities: z
+        .array(
+          z.enum([
+            "age",
+            "bank_account",
+            "credit_card",
+            "credit_card_expiration",
+            "cvv",
+            "date",
+            "date_interval",
+            "dob",
+            "driver_license",
+            "email_address",
+            "healthcare_number",
+            "ip_address",
+            "location",
+            "name",
+            "numerical_pii",
+            "phone_number",
+            "ssn",
+            "url",
+            "vehicle_id",
+            "medical_code",
+            "name_family",
+            "name_given",
+            "account_number",
+            "event",
+            "filename",
+            "gender",
+            "language",
+            "location_address",
+            "location_city",
+            "location_coordinate",
+            "location_country",
+            "location_state",
+            "location_zip",
+            "marital_status",
+            "money",
+            "name_medical_professional",
+            "occupation",
+            "organization",
+            "organization_medical_facility",
+            "origin",
+            "passport_number",
+            "password",
+            "physical_attribute",
+            "political_affiliation",
+            "religion",
+            "time",
+            "username",
+            "zodiac_sign",
+            "blood_type",
+            "condition",
+            "dose",
+            "drug",
+            "injury",
+            "medical_process",
+            "statistics",
+            "routing_number",
+            "corporate_action",
+            "financial_metric",
+            "product",
+            "trend",
+            "duration",
+            "location_address_street",
+            "all",
+            "sexuality",
+            "effect",
+            "project",
+            "organization_id",
+            "day",
+            "month",
+          ])
+        )
+        .optional()
+        .describe(
+          "Specific entities to detect. Leave empty to detect all supported entities."
+        ),
+      maskingMethod: z
+        .enum(["BLACKBOX", "BLUR"])
+        .optional()
+        .describe("Masking method for images (BLACKBOX or BLUR)"),
+      outputProcessedFile: z
+        .boolean()
+        .optional()
+        .describe("Whether to include the processed file in the response"),
+      outputOcrText: z
+        .boolean()
+        .optional()
+        .describe("For images/PDFs: include OCR text in response"),
+      outputTranscription: z
+        .enum(["PLAINTEXT_TRANSCRIPTION", "DIARIZED_TRANSCRIPTION"])
+        .optional()
+        .describe(
+          "For audio: type of transcription (PLAINTEXT_TRANSCRIPTION or DIARIZED_TRANSCRIPTION)"
+        ),
+      pixelDensity: z
+        .number()
+        .optional()
+        .describe("For PDFs: pixel density (default 300)"),
+      maxResolution: z
+        .number()
+        .optional()
+        .describe("For PDFs: max resolution (default 2000)"),
+      waitTime: z
+        .number()
+        .min(1)
+        .max(64)
+        .optional()
+        .describe("Wait time for response in seconds (max 64)"),
     },
     outputSchema: {
-      processedFileData: z.string().optional().describe("Base64-encoded processed file"),
-      mimeType: z.string().optional().describe("MIME type of the processed file"),
-      extension: z.string().optional().describe("File extension of the processed file"),
-      detectedEntities: z.array(z.object({
-        file: z.string().describe("Base64-encoded file with redacted entity"),
-        extension: z.string().describe("File extension"),
-      })).optional().describe("List of detected entities as separate files"),
+      processedFileData: z
+        .string()
+        .optional()
+        .describe("Base64-encoded processed file"),
+      mimeType: z
+        .string()
+        .optional()
+        .describe("MIME type of the processed file"),
+      extension: z
+        .string()
+        .optional()
+        .describe("File extension of the processed file"),
+      detectedEntities: z
+        .array(
+          z.object({
+            file: z
+              .string()
+              .describe("Base64-encoded file with redacted entity"),
+            extension: z.string().describe("File extension"),
+          })
+        )
+        .optional()
+        .describe("List of detected entities as separate files"),
       wordCount: z.number().optional().describe("Number of words processed"),
-      charCount: z.number().optional().describe("Number of characters processed"),
+      charCount: z
+        .number()
+        .optional()
+        .describe("Number of characters processed"),
       sizeInKb: z.number().optional().describe("Size of processed file in KB"),
-      durationInSeconds: z.number().optional().describe("Duration for audio files in seconds"),
-      pageCount: z.number().optional().describe("Number of pages for documents"),
-      slideCount: z.number().optional().describe("Number of slides for presentations"),
+      durationInSeconds: z
+        .number()
+        .optional()
+        .describe("Duration for audio files in seconds"),
+      pageCount: z
+        .number()
+        .optional()
+        .describe("Number of pages for documents"),
+      slideCount: z
+        .number()
+        .optional()
+        .describe("Number of slides for presentations"),
       runId: z.string().optional().describe("Run ID for async operations"),
       status: z.string().optional().describe("Status of the operation"),
     },
   },
-  async ({ fileData, fileName, mimeType, entities, maskingMethod, outputProcessedFile, outputOcrText, outputTranscription, pixelDensity, maxResolution, waitTime }) => {
+  async ({
+    fileData,
+    fileName,
+    mimeType,
+    entities,
+    maskingMethod,
+    outputProcessedFile,
+    outputOcrText,
+    outputTranscription,
+    pixelDensity,
+    maxResolution,
+    waitTime,
+  }) => {
     try {
       // Decode base64 to buffer
       const buffer = Buffer.from(fileData, "base64");
@@ -370,7 +446,7 @@ server.registerTool(
 
       // Set entities if provided - use type-safe mapping
       if (entities && entities.length > 0) {
-        const entityEnums = entities.map(e => {
+        const entityEnums = entities.map((e) => {
           const entityEnum = ENTITY_MAP[e];
           if (!entityEnum) {
             throw new Error(`Invalid entity type: ${e}`);
@@ -446,10 +522,12 @@ server.registerTool(
 
       // Add detected entities if available with proper typing
       if (response.entities && response.entities.length > 0) {
-        output.detectedEntities = response.entities.map((e: DetectedEntityItem) => ({
-          file: e.file,
-          extension: e.extension,
-        }));
+        output.detectedEntities = response.entities.map(
+          (e: DetectedEntityItem) => ({
+            file: e.file,
+            extension: e.extension,
+          })
+        );
       }
 
       // Add file statistics
@@ -502,7 +580,8 @@ server.registerTool(
       } else {
         const errorOutput = {
           error: true,
-          message: error instanceof Error ? error.message : "Unknown error occurred",
+          message:
+            error instanceof Error ? error.message : "Unknown error occurred",
         };
         return {
           content: [{ type: "text", text: JSON.stringify(errorOutput) }],
@@ -516,7 +595,43 @@ server.registerTool(
 const app = express();
 app.use(express.json({ limit: "5mb" })); // Limit for base64-encoded files
 
-app.post("/mcp", async (req, res) => {
+// Bearer token authentication middleware
+const authenticateBearer = (
+  req: express.Request,
+  res: express.Response,
+  next: express.NextFunction
+) => {
+  const requiredToken = process.env.REQUIRED_BEARER_TOKEN;
+
+  if (!requiredToken) {
+    console.error("REQUIRED_BEARER_TOKEN not configured");
+    return res
+      .status(500)
+      .json({ error: "Server authentication not configured" });
+  }
+
+  const authHeader = req.headers.authorization;
+
+  if (!authHeader || !authHeader.startsWith("Bearer ")) {
+    return res
+      .status(401)
+      .json({ error: "Missing or invalid Authorization header" });
+  }
+
+  const token = authHeader.substring(7); // Remove "Bearer " prefix
+
+  const tokensMatch =
+    token.length === requiredToken.length &&
+    crypto.timingSafeEqual(Buffer.from(token), Buffer.from(requiredToken));
+
+  if (!tokensMatch) {
+    return res.status(403).json({ error: "Invalid bearer token" });
+  }
+
+  next();
+};
+
+app.post("/mcp", authenticateBearer, async (req, res) => {
   // Create a new transport for each request to prevent request ID collisions
   const transport = new StreamableHTTPServerTransport({
     sessionIdGenerator: undefined,
