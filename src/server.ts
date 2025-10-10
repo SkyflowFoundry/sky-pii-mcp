@@ -516,7 +516,31 @@ server.registerTool(
 const app = express();
 app.use(express.json({ limit: "5mb" })); // Limit for base64-encoded files
 
-app.post("/mcp", async (req, res) => {
+// Bearer token authentication middleware
+const authenticateBearer = (req: express.Request, res: express.Response, next: express.NextFunction) => {
+  const requiredToken = process.env.REQUIRED_BEARER_TOKEN;
+
+  if (!requiredToken) {
+    console.error("REQUIRED_BEARER_TOKEN not configured");
+    return res.status(500).json({ error: "Server authentication not configured" });
+  }
+
+  const authHeader = req.headers.authorization;
+
+  if (!authHeader || !authHeader.startsWith("Bearer ")) {
+    return res.status(401).json({ error: "Missing or invalid Authorization header" });
+  }
+
+  const token = authHeader.substring(7); // Remove "Bearer " prefix
+
+  if (token !== requiredToken) {
+    return res.status(403).json({ error: "Invalid bearer token" });
+  }
+
+  next();
+};
+
+app.post("/mcp", authenticateBearer, async (req, res) => {
   // Create a new transport for each request to prevent request ID collisions
   const transport = new StreamableHTTPServerTransport({
     sessionIdGenerator: undefined,
