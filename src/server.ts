@@ -21,8 +21,130 @@ import {
   DetectEntities,
   MaskingMethod,
   DetectOutputTranscription,
-  Bleep,
 } from "skyflow-node";
+
+/** Default maximum wait time for file deidentification operations (in seconds) */
+const DEFAULT_MAX_WAIT_TIME_SECONDS = 64;
+
+/**
+ * Type-safe mapping from string entity names to DetectEntities enum values.
+ * This ensures proper type checking and prevents runtime errors from invalid entity mappings.
+ */
+const ENTITY_MAP: Record<string, DetectEntities> = {
+  'age': DetectEntities.AGE,
+  'bank_account': DetectEntities.BANK_ACCOUNT,
+  'credit_card': DetectEntities.CREDIT_CARD,
+  'credit_card_expiration': DetectEntities.CREDIT_CARD_EXPIRATION,
+  'cvv': DetectEntities.CVV,
+  'date': DetectEntities.DATE,
+  'date_interval': DetectEntities.DATE_INTERVAL,
+  'dob': DetectEntities.DOB,
+  'driver_license': DetectEntities.DRIVER_LICENSE,
+  'email_address': DetectEntities.EMAIL_ADDRESS,
+  'healthcare_number': DetectEntities.HEALTHCARE_NUMBER,
+  'ip_address': DetectEntities.IP_ADDRESS,
+  'location': DetectEntities.LOCATION,
+  'name': DetectEntities.NAME,
+  'numerical_pii': DetectEntities.NUMERICAL_PII,
+  'phone_number': DetectEntities.PHONE_NUMBER,
+  'ssn': DetectEntities.SSN,
+  'url': DetectEntities.URL,
+  'vehicle_id': DetectEntities.VEHICLE_ID,
+  'medical_code': DetectEntities.MEDICAL_CODE,
+  'name_family': DetectEntities.NAME_FAMILY,
+  'name_given': DetectEntities.NAME_GIVEN,
+  'account_number': DetectEntities.ACCOUNT_NUMBER,
+  'event': DetectEntities.EVENT,
+  'filename': DetectEntities.FILENAME,
+  'gender': DetectEntities.GENDER,
+  'language': DetectEntities.LANGUAGE,
+  'location_address': DetectEntities.LOCATION_ADDRESS,
+  'location_city': DetectEntities.LOCATION_CITY,
+  'location_coordinate': DetectEntities.LOCATION_COORDINATE,
+  'location_country': DetectEntities.LOCATION_COUNTRY,
+  'location_state': DetectEntities.LOCATION_STATE,
+  'location_zip': DetectEntities.LOCATION_ZIP,
+  'marital_status': DetectEntities.MARITAL_STATUS,
+  'money': DetectEntities.MONEY,
+  'name_medical_professional': DetectEntities.NAME_MEDICAL_PROFESSIONAL,
+  'occupation': DetectEntities.OCCUPATION,
+  'organization': DetectEntities.ORGANIZATION,
+  'organization_medical_facility': DetectEntities.ORGANIZATION_MEDICAL_FACILITY,
+  'origin': DetectEntities.ORIGIN,
+  'passport_number': DetectEntities.PASSPORT_NUMBER,
+  'password': DetectEntities.PASSWORD,
+  'physical_attribute': DetectEntities.PHYSICAL_ATTRIBUTE,
+  'political_affiliation': DetectEntities.POLITICAL_AFFILIATION,
+  'religion': DetectEntities.RELIGION,
+  'time': DetectEntities.TIME,
+  'username': DetectEntities.USERNAME,
+  'zodiac_sign': DetectEntities.ZODIAC_SIGN,
+  'blood_type': DetectEntities.BLOOD_TYPE,
+  'condition': DetectEntities.CONDITION,
+  'dose': DetectEntities.DOSE,
+  'drug': DetectEntities.DRUG,
+  'injury': DetectEntities.INJURY,
+  'medical_process': DetectEntities.MEDICAL_PROCESS,
+  'statistics': DetectEntities.STATISTICS,
+  'routing_number': DetectEntities.ROUTING_NUMBER,
+  'corporate_action': DetectEntities.CORPORATE_ACTION,
+  'financial_metric': DetectEntities.FINANCIAL_METRIC,
+  'product': DetectEntities.PRODUCT,
+  'trend': DetectEntities.TREND,
+  'duration': DetectEntities.DURATION,
+  'location_address_street': DetectEntities.LOCATION_ADDRESS_STREET,
+  'all': DetectEntities.ALL,
+  'sexuality': DetectEntities.SEXUALITY,
+  'effect': DetectEntities.EFFECT,
+  'project': DetectEntities.PROJECT,
+  'organization_id': DetectEntities.ORGANIZATION_ID,
+  'day': DetectEntities.DAY,
+  'month': DetectEntities.MONTH,
+  'year': DetectEntities.YEAR,
+};
+
+/**
+ * Type-safe mapping from string masking method names to MaskingMethod enum values.
+ */
+const MASKING_METHOD_MAP: Record<string, MaskingMethod> = {
+  'BLACKBOX': MaskingMethod.BLACKBOX,
+  'PIXELATE': MaskingMethod.PIXELATE,
+  'BLUR': MaskingMethod.BLUR,
+  'REDACT': MaskingMethod.REDACT,
+};
+
+/**
+ * Type-safe mapping from string transcription names to DetectOutputTranscription enum values.
+ */
+const TRANSCRIPTION_MAP: Record<string, DetectOutputTranscription> = {
+  'PLAINTEXT_TRANSCRIPTION': DetectOutputTranscription.PLAINTEXT_TRANSCRIPTION,
+  'REDACTED_TRANSCRIPTION': DetectOutputTranscription.REDACTED_TRANSCRIPTION,
+};
+
+/** TypeScript interface for detected entity response items */
+interface DetectedEntityItem {
+  file: string;
+  extension: string;
+}
+
+/** TypeScript interface for deidentify file output */
+interface DeidentifyFileOutput {
+  processedFileData?: string;
+  mimeType?: string;
+  extension?: string;
+  detectedEntities?: Array<{
+    file: string;
+    extension: string;
+  }>;
+  wordCount?: number;
+  charCount?: number;
+  sizeInKb?: number;
+  durationInSeconds?: number;
+  pageCount?: number;
+  slideCount?: number;
+  runId?: string;
+  status?: string;
+}
 
 // Create an MCP server
 const server = new McpServer({
@@ -46,14 +168,17 @@ const skyflow = new Skyflow({
   ],
 });
 
-// Add a Skyflow Deidentify tool
+/**
+ * Skyflow Deidentify Tool
+ * Replaces sensitive information in text with placeholder tokens
+ */
 server.registerTool(
   "deidentify",
   {
     title: "Skyflow Deidentify Tool",
     description:
       "Deidentify sensitive information in strings using Skyflow. This tool accepts a string and returns another string, but with placeholders for sensitive data. The placeholders tell you what they are replacing. For example, a credit card number might be replaced with [CREDIT_CARD].",
-    inputSchema: { inputString: z.string() },
+    inputSchema: { inputString: z.string().min(1) },
     outputSchema: {
       processedText: z.string(),
       wordCount: z.number(),
@@ -84,13 +209,16 @@ server.registerTool(
   }
 );
 
-// Add a Skyflow Reidentify tool
+/**
+ * Skyflow Reidentify Tool
+ * Restores original sensitive data from deidentified placeholders
+ */
 server.registerTool(
   "reidentify",
   {
     title: "Skyflow Reidentify Tool",
     description:
-      "Reidentify previously-deidentified sensitive information in strings using Skyflow. This tool accepts a string with redacted placeholders (like [CREDIT_CARD]) and returns the original sensitive data.",
+      "Reidentify previously deidentified sensitive information in strings using Skyflow. This tool accepts a string with redacted placeholders (like [CREDIT_CARD]) and returns the original sensitive data.",
     inputSchema: { inputString: z.string().min(1) },
     outputSchema: {
       processedText: z.string(),
@@ -112,13 +240,17 @@ server.registerTool(
   }
 );
 
-// Add a Skyflow Deidentify File tool
+/**
+ * Skyflow Deidentify File Tool
+ * Processes files to detect and redact sensitive information
+ * Maximum file size: 5MB (due to base64 encoding overhead, original binary files should be ~3.75MB or less)
+ */
 server.registerTool(
   "deidentify_file",
   {
     title: "Skyflow Deidentify File Tool",
     description:
-      "Deidentify sensitive information in files (images, PDFs, audio, documents) using Skyflow. Accepts base64-encoded file data and returns the processed file with sensitive data redacted or masked.",
+      "Deidentify sensitive information in files (images, PDFs, audio, documents) using Skyflow. Accepts base64-encoded file data and returns the processed file with sensitive data redacted or masked. Maximum file size: 5MB (base64-encoded). Due to base64 encoding overhead, original binary files should be approximately 3.75MB or smaller.",
     inputSchema: {
       fileData: z.string().min(1).describe("Base64-encoded file content"),
       fileName: z.string().describe("Original filename for type detection"),
@@ -201,7 +333,7 @@ server.registerTool(
       outputTranscription: z.enum(["PLAINTEXT_TRANSCRIPTION", "REDACTED_TRANSCRIPTION"]).optional().describe("For audio: type of transcription"),
       pixelDensity: z.number().optional().describe("For PDFs: pixel density (default 300)"),
       maxResolution: z.number().optional().describe("For PDFs: max resolution (default 2000)"),
-      waitTime: z.number().optional().describe("Wait time for response in seconds (max 64)"),
+      waitTime: z.number().min(1).max(64).optional().describe("Wait time for response in seconds (max 64)"),
     },
     outputSchema: {
       processedFileData: z.string().optional().describe("Base64-encoded processed file"),
@@ -236,23 +368,25 @@ server.registerTool(
       // Configure DeidentifyFileOptions
       const options = new DeidentifyFileOptions();
 
-      // Set entities if provided
+      // Set entities if provided - use type-safe mapping
       if (entities && entities.length > 0) {
-        // Map string entity names to DetectEntities enum values
         const entityEnums = entities.map(e => {
-          const entityKey = e.toUpperCase().replace(/-/g, "_");
-          return (DetectEntities as any)[entityKey] || e;
+          const entityEnum = ENTITY_MAP[e];
+          if (!entityEnum) {
+            throw new Error(`Invalid entity type: ${e}`);
+          }
+          return entityEnum;
         });
         options.setEntities(entityEnums);
       }
 
-      // Set masking method for images
+      // Set masking method for images - use type-safe mapping
       if (maskingMethod) {
-        const maskingKey = maskingMethod.toUpperCase();
-        const maskingEnum = (MaskingMethod as any)[maskingKey];
-        if (maskingEnum) {
-          options.setMaskingMethod(maskingEnum);
+        const maskingEnum = MASKING_METHOD_MAP[maskingMethod];
+        if (!maskingEnum) {
+          throw new Error(`Invalid masking method: ${maskingMethod}`);
         }
+        options.setMaskingMethod(maskingEnum);
       }
 
       // Set output options
@@ -269,11 +403,11 @@ server.registerTool(
       }
 
       if (outputTranscription) {
-        const transcriptionKey = outputTranscription.toUpperCase();
-        const transcriptionEnum = (DetectOutputTranscription as any)[transcriptionKey];
-        if (transcriptionEnum) {
-          options.setOutputTranscription(transcriptionEnum);
+        const transcriptionEnum = TRANSCRIPTION_MAP[outputTranscription];
+        if (!transcriptionEnum) {
+          throw new Error(`Invalid transcription type: ${outputTranscription}`);
         }
+        options.setOutputTranscription(transcriptionEnum);
       }
 
       if (pixelDensity) {
@@ -284,8 +418,8 @@ server.registerTool(
         options.setMaxResolution(maxResolution);
       }
 
-      // Set wait time (default to 64 seconds max, or use provided value)
-      options.setWaitTime(waitTime || 64);
+      // Set wait time (default to max, or use provided value)
+      options.setWaitTime(waitTime || DEFAULT_MAX_WAIT_TIME_SECONDS);
 
       // Call deidentifyFile - need to get vaultId from environment
       const vaultId = process.env.VAULT_ID || "";
@@ -293,8 +427,8 @@ server.registerTool(
         .detect(vaultId)
         .deidentifyFile(fileReq, options);
 
-      // Prepare the output
-      const output: any = {};
+      // Prepare the output with proper typing
+      const output: DeidentifyFileOutput = {};
 
       // If there's a processed file base64, include it
       if (response.fileBase64) {
@@ -310,9 +444,9 @@ server.registerTool(
         output.extension = response.extension;
       }
 
-      // Add detected entities if available
+      // Add detected entities if available with proper typing
       if (response.entities && response.entities.length > 0) {
-        output.detectedEntities = response.entities.map((e: any) => ({
+        output.detectedEntities = response.entities.map((e: DetectedEntityItem) => ({
           file: e.file,
           extension: e.extension,
         }));
@@ -380,7 +514,7 @@ server.registerTool(
 );
 
 const app = express();
-app.use(express.json({ limit: "50mb" })); // Increase limit for base64-encoded files
+app.use(express.json({ limit: "5mb" })); // Limit for base64-encoded files
 
 app.post("/mcp", async (req, res) => {
   // Create a new transport for each request to prevent request ID collisions
