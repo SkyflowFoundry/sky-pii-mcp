@@ -1,10 +1,14 @@
-# Sky Deidentify MCP
+# Skyflow PII MCP
 
 A streamable HTTP MCP (Model Context Protocol) server built with TypeScript, Express, and the official MCP SDK.
 
 ## Overview
 
 This server demonstrates how to build a remote MCP server using the Streamable HTTP transport. It exposes tools and resources that can be accessed by MCP clients like Claude Desktop.
+
+### Try it out online
+
+This remote MCP server is hosted at `https://pii-mcp.dev/mcp`. If you'd like to try it out contact Skyflow for a key!
 
 ### Features
 
