@@ -13,11 +13,10 @@ This remote MCP server is hosted at `https://pii-mcp.dev/mcp`. If you'd like to 
 ### Features
 
 - **Tools**:
-  - `add`: Addition tool for adding two numbers
-  - `dehydrate`: Skyflow dehydration tool for detecting and redacting sensitive information (PII, PHI, etc.)
-- **Resources**:
-  - Static `welcome` resource with a welcome message
-  - Dynamic `greeting` resource template for personalized greetings
+  - `dehydrate`: Dehydrates sensitive information in text strings using Skyflow. Detects and replaces PII/PHI with placeholder tokens (e.g., `[CREDIT_CARD_abc123]`). Returns processed text with word and character counts.
+  - `rehydrate`: Rehydrates previously dehydrated text strings. Restores original sensitive data from placeholder tokens created by the dehydrate tool.
+  - `dehydrate_file`: Dehydrates sensitive information in files including images, PDFs, audio files, and documents. Supports multiple file formats with configurable masking methods (BLACKBOX, BLUR), entity detection, OCR text extraction, and audio transcription. Maximum file size: 5MB (base64-encoded).
+- **Authentication**: Bearer token authentication via `REQUIRED_BEARER_TOKEN` environment variable
 - **Transport**: Streamable HTTP with JSON response support
 - **Port**: Configurable via `PORT` environment variable (defaults to 3000)
 
@@ -97,17 +96,6 @@ curl -X POST http://localhost:3000/mcp \
   -d '{"jsonrpc":"2.0","method":"tools/list","id":1}'
 ```
 
-### Call the Addition Tool
-
-Test calling the `add` tool:
-
-```bash
-curl -X POST http://localhost:3000/mcp \
-  -H "Content-Type: application/json" \
-  -H "Accept: application/json, text/event-stream" \
-  -d '{"jsonrpc":"2.0","method":"tools/call","params":{"name":"add","arguments":{"a":5,"b":3}},"id":2}'
-```
-
 ### Call the Dehydrate Tool
 
 Test calling the `dehydrate` tool to redact sensitive information:
@@ -121,23 +109,18 @@ curl -X POST http://localhost:3000/mcp \
 
 This will return the dehydrated text with sensitive data redacted, along with word and character counts.
 
-### List Available Resources
+### Call the Rehydrate Tool
+
+Test calling the `rehydrate` tool to restore original sensitive information from dehydrated text:
 
 ```bash
 curl -X POST http://localhost:3000/mcp \
   -H "Content-Type: application/json" \
   -H "Accept: application/json, text/event-stream" \
-  -d '{"jsonrpc":"2.0","method":"resources/list","id":3}'
+  -d '{"jsonrpc":"2.0","method":"tools/call","params":{"name":"rehydrate","arguments":{"inputString":"My email is [EMAIL_ADDRESS_abc123] and my SSN is [SSN_def456]"}},"id":3}'
 ```
 
-### Read a Resource
-
-```bash
-curl -X POST http://localhost:3000/mcp \
-  -H "Content-Type: application/json" \
-  -H "Accept: application/json, text/event-stream" \
-  -d '{"jsonrpc":"2.0","method":"resources/read","params":{"uri":"greeting://Claude"},"id":4}'
-```
+This will return the original text with sensitive data restored from the placeholder tokens.
 
 ## Integration with Claude Desktop
 
@@ -165,12 +148,13 @@ To use this MCP server with Claude Desktop, add the following configuration to y
 After updating the config:
 1. Save the file
 2. Restart Claude Desktop completely (quit and reopen)
-3. The `add` and `dehydrate` tools should now be available in Claude Desktop
+3. The `dehydrate`, `rehydrate`, and `dehydrate_file` tools should now be available in Claude Desktop
 
 ## Architecture
 
-- **Express Server**: Handles HTTP requests on the `/mcp` endpoint
-- **MCP Server**: Registers tools and resources using the official SDK
+- **Express Server**: Handles HTTP requests on the `/mcp` endpoint with bearer token authentication
+- **MCP Server**: Registers tools using the official MCP SDK
+- **Skyflow Integration**: Uses Skyflow SDK for PII/PHI detection and de-identification
 - **Streamable HTTP Transport**: Creates a new transport per request to prevent ID collisions
 - **Session Management**: Each request gets its own isolated transport instance
 
