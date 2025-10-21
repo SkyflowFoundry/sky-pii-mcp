@@ -3,7 +3,7 @@
 	"version": "1.0.0",
 	"description": "Skyflow MCP Integration",
 	"scripts": {
-		"dev": "npx -y @modelcontextprotocol/inspector & npx -y tsx src/server.ts",
+		"dev": "./dev.sh",
 		"server": "npx -y tsx src/server.ts",
 		"inspector": "npx -y @modelcontextprotocol/inspector"
 	},
