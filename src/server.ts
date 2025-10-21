@@ -158,19 +158,19 @@ const server = new McpServer({
 const vaultUrl = process.env.VAULT_URL || "";
 const clusterId = vaultUrl.match(/https:\/\/([^.]+)\.vault/)?.[1] || "";
 
-// Determine authentication method: prefer API key over bearer token
+// Use API key for authentication
 const apiKey = process.env.SKYFLOW_API_KEY;
-const bearerToken = process.env.SKYFLOW_BEARER_TOKEN;
-const useApiKey = apiKey && apiKey.length > 0;
+
+if (!apiKey) {
+  throw new Error("SKYFLOW_API_KEY environment variable is required");
+}
 
 const skyflow = new Skyflow({
   vaultConfigs: [
     {
       vaultId: process.env.VAULT_ID || "",
       clusterId: clusterId,
-      credentials: useApiKey
-        ? { apiKey: apiKey }
-        : { token: bearerToken || "" },
+      credentials: { apiKey: apiKey },
     },
   ],
 });

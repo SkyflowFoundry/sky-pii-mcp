@@ -41,8 +41,9 @@ The server will start on `http://localhost:3000/mcp` by default.
 
 To start with authentication:
 
-- API Key: `SKYFLOW_API_KEY=your_api_key_here npx -y tsx src/server.ts`
-- Bearer Token: `SKYFLOW_BEARER_TOKEN=your_token_here npx -y tsx src/server.ts`
+```bash
+SKYFLOW_API_KEY=your_api_key_here npx -y tsx src/server.ts
+```
 
 ### MCP Inspector
 
@@ -62,13 +63,11 @@ npx -y @modelcontextprotocol/inspector
 
 Create a `.env.local` file with the following variables:
 
-- `SKYFLOW_API_KEY`: Your Skyflow API key (preferred authentication method)
-- `SKYFLOW_BEARER_TOKEN`: Your Skyflow API bearer token (used if API key is not provided)
+- `SKYFLOW_API_KEY`: Your Skyflow API key (required for authentication)
 - `VAULT_ID`: Your Skyflow vault ID
 - `VAULT_URL`: Your Skyflow vault URL (e.g., `https://ebfc9bee4242.vault.skyflowapis.com`)
 - `PORT`: Server port (default: 3000)
-
-**Authentication Priority**: The server will check for `SKYFLOW_API_KEY` first. If it exists and is non-empty, it will be used for authentication. Otherwise, it will fall back to `SKYFLOW_BEARER_TOKEN`.
+- `REQUIRED_BEARER_TOKEN`: Bearer token for authenticating requests to this MCP server
 
 ## Testing
 
