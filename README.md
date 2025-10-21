@@ -31,33 +31,48 @@ pnpm install
 
 ## Development
 
-Run the server in development mode:
+### Quick Start
+
+The easiest way to start developing is to use the `dev` script, which automatically starts both the MCP server and inspector with the correct configuration:
 
 ```bash
-npx -y tsx src/server.ts
+pnpm dev
 ```
 
-The server will start on `http://localhost:3000/mcp` by default.
+This will:
+1. Start the MCP Inspector on port 6274 (UI) and 6277 (proxy)
+2. Automatically open your browser with the inspector pre-configured to connect to `http://localhost:3000/mcp`
+3. Start your MCP server on port 3000
+4. Display interleaved logs from both processes in your terminal
 
-To start with authentication:
+### Available Scripts
 
-```bash
-SKYFLOW_API_KEY=your_api_key_here npx -y tsx src/server.ts
-```
+- **`pnpm dev`** - Recommended for development. Starts both inspector and server with automatic browser configuration
+- **`pnpm server`** - Starts only the MCP server on port 3000
+- **`pnpm inspector`** - Starts only the MCP Inspector (useful if you want to run them in separate terminals)
 
-### MCP Inspector
+### Manual Setup (Alternative)
 
-1. Copy your Vault Details into the .env.local
-2. Start the inspector server in another terminal:
+If you prefer to run the inspector and server in separate terminals:
 
-```
-npx -y @modelcontextprotocol/inspector
-```
+1. Copy your Vault Details into `.env.local`
+2. In terminal 1, start the inspector:
+   ```bash
+   pnpm inspector
+   ```
+3. In terminal 2, start the server:
+   ```bash
+   pnpm server
+   ```
+4. Open your browser to `http://localhost:6274/`
+5. Choose 'Streamable HTTP' and set the address to `http://localhost:3000/mcp`
+6. Click 'Connect'
 
-2. Open it at `http://localhost:6274/` (or whatever it says)
-3. Choose 'Streamable HTTP' and set the address to `http://localhost:3000/mcp`.
-4. Click 'Connect' to connect to the MCP server
-5. Success!
+### Understanding the Ports
+
+- **Port 3000**: Your MCP server (configurable via `PORT` env var)
+- **Port 6274**: MCP Inspector UI (where you interact with the inspector)
+- **Port 6277**: MCP Inspector Proxy (internal proxy used by the inspector)
 
 ### Environment Variables
 
