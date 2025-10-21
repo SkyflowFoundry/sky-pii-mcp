@@ -1,4 +1,7 @@
 {
+	"name": "sky-mcp",
+	"version": "1.0.0",
+	"description": "Skyflow MCP Integration",
 	"dependencies": {
 		"@modelcontextprotocol/sdk": "^1.19.1",
 		"dotenv": "^17.2.3",

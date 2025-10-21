@@ -158,14 +158,19 @@ const server = new McpServer({
 const vaultUrl = process.env.VAULT_URL || "";
 const clusterId = vaultUrl.match(/https:\/\/([^.]+)\.vault/)?.[1] || "";
 
+// Use API key for authentication
+const apiKey = process.env.SKYFLOW_API_KEY;
+
+if (!apiKey) {
+  throw new Error("SKYFLOW_API_KEY environment variable is required");
+}
+
 const skyflow = new Skyflow({
   vaultConfigs: [
     {
       vaultId: process.env.VAULT_ID || "",
       clusterId: clusterId,
-      credentials: {
-        token: process.env.SKYFLOW_BEARER_TOKEN || "",
-      },
+      credentials: { apiKey: apiKey },
     },
   ],
 });
