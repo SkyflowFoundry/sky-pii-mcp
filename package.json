@@ -2,6 +2,11 @@
 	"name": "sky-mcp",
 	"version": "1.0.0",
 	"description": "Skyflow MCP Integration",
+	"scripts": {
+		"dev": "npx -y @modelcontextprotocol/inspector & npx -y tsx src/server.ts",
+		"server": "npx -y tsx src/server.ts",
+		"inspector": "npx -y @modelcontextprotocol/inspector"
+	},
 	"dependencies": {
 		"@modelcontextprotocol/sdk": "^1.19.1",
 		"dotenv": "^17.2.3",
