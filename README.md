@@ -60,7 +60,6 @@ After updating the config:
 - **Streamable HTTP Transport**: Creates a new transport per request to prevent ID collisions
 - **Session Management**: Each request gets its own isolated transport instance
 
-
 ## Installation
 
 ```bash
@@ -124,7 +123,6 @@ Create a `.env.local` file with the following variables:
 - `VAULT_URL`: Your Skyflow vault URL (e.g., `https://ebfc9bee4242.vault.skyflowapis.com`)
 - `PORT`: Server port (default: 3000)
 - `REQUIRED_BEARER_TOKEN`: Bearer token for authenticating requests to this MCP server
-
 
 ### Dependencies
 
