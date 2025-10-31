@@ -4,6 +4,9 @@ A streamable HTTP MCP (Model Context Protocol) server built with TypeScript, Exp
 
 ## Overview
 
+> [!WARNING]  
+> This is an experimental project in development. This project is not supported and offered under an MIT license.
+
 This server demonstrates how to build a remote MCP server using the Streamable HTTP transport. It exposes tools and resources that can be accessed by MCP clients like Claude Desktop.
 
 ### Try it out online
