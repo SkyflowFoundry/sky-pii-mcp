@@ -9,9 +9,48 @@ A streamable HTTP MCP (Model Context Protocol) server built with TypeScript, Exp
 
 This server demonstrates how to build a remote MCP server using the Streamable HTTP transport. It exposes tools and resources that can be accessed by MCP clients like Claude Desktop.
 
-### Try it out online
+## Try it out online
 
 This remote MCP server is hosted at `https://pii-mcp.dev/mcp`. If you'd like to try it out contact Skyflow for a key!
+
+### Integration with Claude Desktop
+
+To use this MCP server with Claude Desktop, add the following configuration to your `claude_desktop_config.json`:
+
+```json
+{
+  "mcpServers": {
+    "sky": {
+      "command": "npx",
+      "args": ["mcp-remote", "https://pii-mcp.dev/mcp"],
+      "headers": {
+        "Authorization": "Bearer {mcp token here}"
+      }
+    }
+  }
+}
+```
+
+### Table of contents
+
+- [Skyflow PII MCP](#skyflow-pii-mcp)
+  - [Overview](#overview)
+  - [Try it out online](#try-it-out-online)
+    - [Integration with Claude Desktop](#integration-with-claude-desktop)
+    - [Table of contents](#table-of-contents)
+    - [Features](#features)
+    - [Configuration File Locations](#configuration-file-locations)
+  - [Architecture](#architecture)
+  - [Installation](#installation)
+  - [Development](#development)
+    - [Quick Start](#quick-start)
+    - [Available Scripts](#available-scripts)
+    - [Manual Setup (Alternative)](#manual-setup-alternative)
+    - [Understanding the Ports](#understanding-the-ports)
+    - [Environment Variables](#environment-variables)
+    - [Dependencies](#dependencies)
+  - [Learn More](#learn-more)
+
 
 ### Features
 
@@ -23,21 +62,6 @@ This remote MCP server is hosted at `https://pii-mcp.dev/mcp`. If you'd like to 
   - Dynamic `greeting` resource template for personalized greetings
 - **Transport**: Streamable HTTP with JSON response support
 - **Port**: Configurable via `PORT` environment variable (defaults to 3000)
-
-## Integration with Claude Desktop
-
-To use this MCP server with Claude Desktop, add the following configuration to your `claude_desktop_config.json`:
-
-```json
-{
-  "mcpServers": {
-    "sky": {
-      "command": "npx",
-      "args": ["mcp-remote", "http://localhost:3000/mcp"]
-    }
-  }
-}
-```
 
 **Note**: Make sure the server is running before starting Claude Desktop.
 
