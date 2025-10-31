@@ -24,6 +24,43 @@ This remote MCP server is hosted at `https://pii-mcp.dev/mcp`. If you'd like to 
 - **Transport**: Streamable HTTP with JSON response support
 - **Port**: Configurable via `PORT` environment variable (defaults to 3000)
 
+## Integration with Claude Desktop
+
+To use this MCP server with Claude Desktop, add the following configuration to your `claude_desktop_config.json`:
+
+```json
+{
+  "mcpServers": {
+    "sky": {
+      "command": "npx",
+      "args": ["mcp-remote", "http://localhost:3000/mcp"]
+    }
+  }
+}
+```
+
+**Note**: Make sure the server is running before starting Claude Desktop.
+
+### Configuration File Locations
+
+- **macOS**: `~/Library/Application Support/Claude/claude_desktop_config.json`
+- **Windows**: `%APPDATA%\Claude\claude_desktop_config.json`
+- **Linux**: `~/.config/Claude/claude_desktop_config.json`
+
+After updating the config:
+
+1. Save the file
+2. Restart Claude Desktop completely (quit and reopen)
+3. The `add` and `dehydrate` tools should now be available in Claude Desktop
+
+## Architecture
+
+- **Express Server**: Handles HTTP requests on the `/mcp` endpoint
+- **MCP Server**: Registers tools and resources using the official SDK
+- **Streamable HTTP Transport**: Creates a new transport per request to prevent ID collisions
+- **Session Management**: Each request gets its own isolated transport instance
+
+
 ## Installation
 
 ```bash
@@ -88,43 +125,8 @@ Create a `.env.local` file with the following variables:
 - `PORT`: Server port (default: 3000)
 - `REQUIRED_BEARER_TOKEN`: Bearer token for authenticating requests to this MCP server
 
-## Integration with Claude Desktop
 
-To use this MCP server with Claude Desktop, add the following configuration to your `claude_desktop_config.json`:
-
-```json
-{
-  "mcpServers": {
-    "sky": {
-      "command": "npx",
-      "args": ["mcp-remote", "http://localhost:3000/mcp"]
-    }
-  }
-}
-```
-
-**Note**: Make sure the server is running before starting Claude Desktop.
-
-### Configuration File Locations
-
-- **macOS**: `~/Library/Application Support/Claude/claude_desktop_config.json`
-- **Windows**: `%APPDATA%\Claude\claude_desktop_config.json`
-- **Linux**: `~/.config/Claude/claude_desktop_config.json`
-
-After updating the config:
-
-1. Save the file
-2. Restart Claude Desktop completely (quit and reopen)
-3. The `add` and `dehydrate` tools should now be available in Claude Desktop
-
-## Architecture
-
-- **Express Server**: Handles HTTP requests on the `/mcp` endpoint
-- **MCP Server**: Registers tools and resources using the official SDK
-- **Streamable HTTP Transport**: Creates a new transport per request to prevent ID collisions
-- **Session Management**: Each request gets its own isolated transport instance
-
-## Dependencies
+### Dependencies
 
 - `@modelcontextprotocol/sdk`: Official MCP TypeScript SDK
 - `express`: Web server framework
