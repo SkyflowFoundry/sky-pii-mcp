@@ -22,7 +22,7 @@ import {
   MaskingMethod,
   DetectOutputTranscription,
 } from "skyflow-node";
-import crypto from 'crypto';
+import { AsyncLocalStorage } from "async_hooks";
 
 /** Default maximum wait time for file dehydration operations (in seconds) */
 const DEFAULT_MAX_WAIT_TIME_SECONDS = 64;
@@ -148,31 +148,43 @@ interface DeidentifyFileOutput {
   status?: string;
 }
 
+/**
+ * AsyncLocalStorage for storing per-request Skyflow instances
+ * This allows tools to access the current request's Skyflow client
+ */
+interface RequestContext {
+  skyflow: Skyflow;
+  vaultId: string;
+}
+
+const requestContextStorage = new AsyncLocalStorage<RequestContext>();
+
+/**
+ * Get the Skyflow instance for the current request context
+ */
+function getCurrentSkyflow(): Skyflow {
+  const context = requestContextStorage.getStore();
+  if (!context) {
+    throw new Error("No Skyflow instance available in current request context");
+  }
+  return context.skyflow;
+}
+
+/**
+ * Get the vaultId for the current request context
+ */
+function getCurrentVaultId(): string {
+  const context = requestContextStorage.getStore();
+  if (!context) {
+    throw new Error("No vaultId available in current request context");
+  }
+  return context.vaultId;
+}
+
 // Create an MCP server
 const server = new McpServer({
   name: "demo-server",
   version: "1.0.0",
-});
-
-// Create a Skyflow vault client
-const vaultUrl = process.env.VAULT_URL || "";
-const clusterId = vaultUrl.match(/https:\/\/([^.]+)\.vault/)?.[1] || "";
-
-// Use API key for authentication
-const apiKey = process.env.SKYFLOW_API_KEY;
-
-if (!apiKey) {
-  throw new Error("SKYFLOW_API_KEY environment variable is required");
-}
-
-const skyflow = new Skyflow({
-  vaultConfigs: [
-    {
-      vaultId: process.env.VAULT_ID || "",
-      clusterId: clusterId,
-      credentials: { apiKey: apiKey },
-    },
-  ],
 });
 
 /**
@@ -201,11 +213,14 @@ server.registerTool(
     // TODO: add support for custom restrict regex list, include in the tool input schema
     // options.setRestrictRegexList([
     //   "/.{3,}@[a-zA-Z]{2,}\.[a-zA-Z]{2,}/g", // Email addresses with at least 3 characters before '@'
-    // ]); 
+    // ]);
     // TODO: add support for custom allow regex list, include in the tool input schema. Note that allow wins over restrict if the same pattern is in both lists.
     // options.setAllowRegexList([
     //   "/.{3,}@[a-zA-Z]{2,}\.[a-zA-Z]{2,}/g", // Email addresses with at least 3 characters before '@'
-    // ]); 
+    // ]);
+
+    // Get the per-request Skyflow instance
+    const skyflow = getCurrentSkyflow();
 
     const response = await skyflow
       .detect()
@@ -240,6 +255,9 @@ server.registerTool(
     },
   },
   async ({ inputString }) => {
+    // Get the per-request Skyflow instance
+    const skyflow = getCurrentSkyflow();
+
     const response = await skyflow
       .detect()
       .reidentifyText(new ReidentifyTextRequest(inputString));
@@ -510,8 +528,10 @@ server.registerTool(
       // Set wait time (default to max, or use provided value)
       options.setWaitTime(waitTime || DEFAULT_MAX_WAIT_TIME_SECONDS);
 
-      // Call deidentifyFile - need to get vaultId from environment
-      const vaultId = process.env.VAULT_ID || "";
+      // Get the per-request Skyflow instance and vaultId
+      const skyflow = getCurrentSkyflow();
+      const vaultId = getCurrentVaultId();
+
       const response = await skyflow
         .detect(vaultId)
         .deidentifyFile(fileReq, options);
@@ -608,21 +628,22 @@ server.registerTool(
 const app = express();
 app.use(express.json({ limit: "5mb" })); // Limit for base64-encoded files
 
-// Bearer token authentication middleware
+// Extend Express Request type to include custom properties
+declare global {
+  namespace Express {
+    interface Request {
+      bearerToken?: string;
+    }
+  }
+}
+
+// Bearer token extraction middleware
+// Validates format and extracts token for use with Skyflow API
 const authenticateBearer = (
   req: express.Request,
   res: express.Response,
   next: express.NextFunction
 ) => {
-  const requiredToken = process.env.REQUIRED_BEARER_TOKEN;
-
-  if (!requiredToken) {
-    console.error("REQUIRED_BEARER_TOKEN not configured");
-    return res
-      .status(500)
-      .json({ error: "Server authentication not configured" });
-  }
-
   const authHeader = req.headers.authorization;
 
   if (!authHeader || !authHeader.startsWith("Bearer ")) {
@@ -633,18 +654,54 @@ const authenticateBearer = (
 
   const token = authHeader.substring(7); // Remove "Bearer " prefix
 
-  const tokensMatch =
-    token.length === requiredToken.length &&
-    crypto.timingSafeEqual(Buffer.from(token), Buffer.from(requiredToken));
-
-  if (!tokensMatch) {
-    return res.status(403).json({ error: "Invalid bearer token" });
+  if (!token || token.trim().length === 0) {
+    return res.status(401).json({ error: "Bearer token is empty" });
   }
+
+  // Attach token to request for downstream use
+  req.bearerToken = token;
 
   next();
 };
 
 app.post("/mcp", authenticateBearer, async (req, res) => {
+  // Extract query parameters for vault configuration
+  const accountId = (req.query.accountId as string) || process.env.ACCOUNT_ID;
+  const vaultId = (req.query.vaultId as string) || process.env.VAULT_ID;
+  const vaultUrl = (req.query.vaultUrl as string) || process.env.VAULT_URL;
+  const workspaceId = (req.query.workspaceId as string) || process.env.WORKSPACE_ID;
+
+  // Validate required parameters
+  if (!vaultId) {
+    return res.status(400).json({ error: "vaultId is required (provide as query parameter or VAULT_ID environment variable)" });
+  }
+
+  if (!vaultUrl) {
+    return res.status(400).json({ error: "vaultUrl is required (provide as query parameter or VAULT_URL environment variable)" });
+  }
+
+  if (!req.bearerToken) {
+    return res.status(401).json({ error: "Bearer token is required" });
+  }
+
+  // Extract clusterId from vaultUrl
+  const clusterIdMatch = vaultUrl.match(/https:\/\/([^.]+)\.vault/);
+  if (!clusterIdMatch || !clusterIdMatch[1]) {
+    return res.status(400).json({ error: "Invalid vaultUrl format. Expected format: https://<clusterId>.vault.skyflowapis.com" });
+  }
+  const clusterId = clusterIdMatch[1];
+
+  // Create per-request Skyflow instance with bearer token
+  const skyflowInstance = new Skyflow({
+    vaultConfigs: [
+      {
+        vaultId: vaultId,
+        clusterId: clusterId,
+        credentials: { token: req.bearerToken },
+      },
+    ],
+  });
+
   // Create a new transport for each request to prevent request ID collisions
   const transport = new StreamableHTTPServerTransport({
     sessionIdGenerator: undefined,
@@ -655,8 +712,15 @@ app.post("/mcp", authenticateBearer, async (req, res) => {
     transport.close();
   });
 
-  await server.connect(transport);
-  await transport.handleRequest(req, res, req.body);
+  // Run the MCP request handling within the AsyncLocalStorage context
+  // This makes the Skyflow instance available to all tools via getCurrentSkyflow()
+  await requestContextStorage.run(
+    { skyflow: skyflowInstance, vaultId: vaultId },
+    async () => {
+      await server.connect(transport);
+      await transport.handleRequest(req, res, req.body);
+    }
+  );
 });
 
 const port = parseInt(process.env.PORT || "3000");
