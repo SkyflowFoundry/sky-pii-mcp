@@ -198,6 +198,14 @@ server.registerTool(
 
     const options = new DeidentifyTextOptions();
     options.setTokenFormat(tokenFormat);
+    // TODO: add support for custom restrict regex list, include in the tool input schema
+    // options.setRestrictRegexList([
+    //   "/.{3,}@[a-zA-Z]{2,}\.[a-zA-Z]{2,}/g", // Email addresses with at least 3 characters before '@'
+    // ]); 
+    // TODO: add support for custom allow regex list, include in the tool input schema. Note that allow wins over restrict if the same pattern is in both lists.
+    // options.setAllowRegexList([
+    //   "/.{3,}@[a-zA-Z]{2,}\.[a-zA-Z]{2,}/g", // Email addresses with at least 3 characters before '@'
+    // ]); 
 
     const response = await skyflow
       .detect()
