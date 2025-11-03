@@ -2,7 +2,10 @@
   "mcpServers": {
     "sky": {
       "command": "npx",
-      "args": ["mcp-remote", "http://localhost:3000/mcp"]
+      "args": ["mcp-remote", "https://pii-mcp.dev/mcp"],
+      "headers": {
+        "Authorization": "Bearer {mcp token here}"
+      }
     }
   }
 }
