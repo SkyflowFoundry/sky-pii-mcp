@@ -672,15 +672,26 @@ app.post("/mcp", authenticateBearer, async (req, res) => {
   const accountId = (req.query.accountId as string) || process.env.ACCOUNT_ID;
   const vaultId = (req.query.vaultId as string) || process.env.VAULT_ID;
   const vaultUrl = (req.query.vaultUrl as string) || process.env.VAULT_URL;
-  const workspaceId = (req.query.workspaceId as string) || process.env.WORKSPACE_ID;
+  const workspaceId =
+    (req.query.workspaceId as string) || process.env.WORKSPACE_ID;
 
   // Validate required parameters
   if (!vaultId) {
-    return res.status(400).json({ error: "vaultId is required (provide as query parameter or VAULT_ID environment variable)" });
+    return res
+      .status(400)
+      .json({
+        error:
+          "vaultId is required (provide as query parameter or VAULT_ID environment variable)",
+      });
   }
 
   if (!vaultUrl) {
-    return res.status(400).json({ error: "vaultUrl is required (provide as query parameter or VAULT_URL environment variable)" });
+    return res
+      .status(400)
+      .json({
+        error:
+          "vaultUrl is required (provide as query parameter or VAULT_URL environment variable)",
+      });
   }
 
   if (!req.bearerToken) {
@@ -690,7 +701,12 @@ app.post("/mcp", authenticateBearer, async (req, res) => {
   // Extract clusterId from vaultUrl
   const clusterIdMatch = vaultUrl.match(/https:\/\/([^.]+)\.vault/);
   if (!clusterIdMatch || !clusterIdMatch[1]) {
-    return res.status(400).json({ error: "Invalid vaultUrl format. Expected format: https://<clusterId>.vault.skyflowapis.com" });
+    return res
+      .status(400)
+      .json({
+        error:
+          "Invalid vaultUrl format. Expected format: https://<clusterId>.vault.skyflowapis.com",
+      });
   }
   const clusterId = clusterIdMatch[1];
 
