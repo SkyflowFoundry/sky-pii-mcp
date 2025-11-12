@@ -18,109 +18,18 @@ import {
   TokenType,
   Skyflow,
   SkyflowError,
-  DetectEntities,
-  MaskingMethod,
-  DetectOutputTranscription,
 } from "skyflow-node";
 import { AsyncLocalStorage } from "async_hooks";
+import {
+  getEntityEnum,
+  getMaskingMethodEnum,
+  getTranscriptionEnum,
+} from "./lib/mappings/entityMaps.js";
+import { validateVaultConfig } from "./lib/validation/vaultConfig.js";
+import { authenticateBearer } from "./lib/middleware/authenticateBearer.js";
 
 /** Default maximum wait time for file dehydration operations (in seconds) */
 const DEFAULT_MAX_WAIT_TIME_SECONDS = 64;
-
-/**
- * Type-safe mapping from string entity names to DetectEntities enum values.
- * This ensures proper type checking and prevents runtime errors from invalid entity mappings.
- */
-const ENTITY_MAP: Record<string, DetectEntities> = {
-  age: DetectEntities.AGE,
-  bank_account: DetectEntities.BANK_ACCOUNT,
-  credit_card: DetectEntities.CREDIT_CARD,
-  credit_card_expiration: DetectEntities.CREDIT_CARD_EXPIRATION,
-  cvv: DetectEntities.CVV,
-  date: DetectEntities.DATE,
-  date_interval: DetectEntities.DATE_INTERVAL,
-  dob: DetectEntities.DOB,
-  driver_license: DetectEntities.DRIVER_LICENSE,
-  email_address: DetectEntities.EMAIL_ADDRESS,
-  healthcare_number: DetectEntities.HEALTHCARE_NUMBER,
-  ip_address: DetectEntities.IP_ADDRESS,
-  location: DetectEntities.LOCATION,
-  name: DetectEntities.NAME,
-  numerical_pii: DetectEntities.NUMERICAL_PII,
-  phone_number: DetectEntities.PHONE_NUMBER,
-  ssn: DetectEntities.SSN,
-  url: DetectEntities.URL,
-  vehicle_id: DetectEntities.VEHICLE_ID,
-  medical_code: DetectEntities.MEDICAL_CODE,
-  name_family: DetectEntities.NAME_FAMILY,
-  name_given: DetectEntities.NAME_GIVEN,
-  account_number: DetectEntities.ACCOUNT_NUMBER,
-  event: DetectEntities.EVENT,
-  filename: DetectEntities.FILENAME,
-  gender: DetectEntities.GENDER,
-  language: DetectEntities.LANGUAGE,
-  location_address: DetectEntities.LOCATION_ADDRESS,
-  location_city: DetectEntities.LOCATION_CITY,
-  location_coordinate: DetectEntities.LOCATION_COORDINATE,
-  location_country: DetectEntities.LOCATION_COUNTRY,
-  location_state: DetectEntities.LOCATION_STATE,
-  location_zip: DetectEntities.LOCATION_ZIP,
-  marital_status: DetectEntities.MARITAL_STATUS,
-  money: DetectEntities.MONEY,
-  name_medical_professional: DetectEntities.NAME_MEDICAL_PROFESSIONAL,
-  occupation: DetectEntities.OCCUPATION,
-  organization: DetectEntities.ORGANIZATION,
-  organization_medical_facility: DetectEntities.ORGANIZATION_MEDICAL_FACILITY,
-  origin: DetectEntities.ORIGIN,
-  passport_number: DetectEntities.PASSPORT_NUMBER,
-  password: DetectEntities.PASSWORD,
-  physical_attribute: DetectEntities.PHYSICAL_ATTRIBUTE,
-  political_affiliation: DetectEntities.POLITICAL_AFFILIATION,
-  religion: DetectEntities.RELIGION,
-  time: DetectEntities.TIME,
-  username: DetectEntities.USERNAME,
-  zodiac_sign: DetectEntities.ZODIAC_SIGN,
-  blood_type: DetectEntities.BLOOD_TYPE,
-  condition: DetectEntities.CONDITION,
-  dose: DetectEntities.DOSE,
-  drug: DetectEntities.DRUG,
-  injury: DetectEntities.INJURY,
-  medical_process: DetectEntities.MEDICAL_PROCESS,
-  statistics: DetectEntities.STATISTICS,
-  routing_number: DetectEntities.ROUTING_NUMBER,
-  corporate_action: DetectEntities.CORPORATE_ACTION,
-  financial_metric: DetectEntities.FINANCIAL_METRIC,
-  product: DetectEntities.PRODUCT,
-  trend: DetectEntities.TREND,
-  duration: DetectEntities.DURATION,
-  location_address_street: DetectEntities.LOCATION_ADDRESS_STREET,
-  all: DetectEntities.ALL,
-  sexuality: DetectEntities.SEXUALITY,
-  effect: DetectEntities.EFFECT,
-  project: DetectEntities.PROJECT,
-  organization_id: DetectEntities.ORGANIZATION_ID,
-  day: DetectEntities.DAY,
-  month: DetectEntities.MONTH,
-  // Note: 'year' entity is not available in the current skyflow-node version
-};
-
-/**
- * Type-safe mapping from string masking method names to MaskingMethod enum values.
- */
-const MASKING_METHOD_MAP: Record<string, MaskingMethod> = {
-  BLACKBOX: MaskingMethod.Blackbox,
-  // Note: 'PIXELATE' is not available in the current skyflow-node version
-  BLUR: MaskingMethod.Blur,
-  // Note: 'REDACT' is not available in the current skyflow-node version
-};
-
-/**
- * Type-safe mapping from string transcription names to DetectOutputTranscription enum values.
- */
-const TRANSCRIPTION_MAP: Record<string, DetectOutputTranscription> = {
-  PLAINTEXT_TRANSCRIPTION: DetectOutputTranscription.PLAINTEXT_TRANSCRIPTION,
-  DIARIZED_TRANSCRIPTION: DetectOutputTranscription.DIARIZED_TRANSCRIPTION,
-};
 
 /** TypeScript interface for detected entity response items */
 interface DetectedEntityItem {
@@ -477,23 +386,13 @@ server.registerTool(
 
       // Set entities if provided - use type-safe mapping
       if (entities && entities.length > 0) {
-        const entityEnums = entities.map((e) => {
-          const entityEnum = ENTITY_MAP[e];
-          if (!entityEnum) {
-            throw new Error(`Invalid entity type: ${e}`);
-          }
-          return entityEnum;
-        });
+        const entityEnums = entities.map((e) => getEntityEnum(e));
         options.setEntities(entityEnums);
       }
 
       // Set masking method for images - use type-safe mapping
       if (maskingMethod) {
-        const maskingEnum = MASKING_METHOD_MAP[maskingMethod];
-        if (!maskingEnum) {
-          throw new Error(`Invalid masking method: ${maskingMethod}`);
-        }
-        options.setMaskingMethod(maskingEnum);
+        options.setMaskingMethod(getMaskingMethodEnum(maskingMethod));
       }
 
       // Set output options
@@ -510,11 +409,7 @@ server.registerTool(
       }
 
       if (outputTranscription) {
-        const transcriptionEnum = TRANSCRIPTION_MAP[outputTranscription];
-        if (!transcriptionEnum) {
-          throw new Error(`Invalid transcription type: ${outputTranscription}`);
-        }
-        options.setOutputTranscription(transcriptionEnum);
+        options.setOutputTranscription(getTranscriptionEnum(outputTranscription));
       }
 
       if (pixelDensity) {
@@ -640,33 +535,6 @@ declare global {
   }
 }
 
-// Bearer token extraction middleware
-// Validates format and extracts token for use with Skyflow API
-const authenticateBearer = (
-  req: express.Request,
-  res: express.Response,
-  next: express.NextFunction
-) => {
-  const authHeader = req.headers.authorization;
-
-  if (!authHeader || !authHeader.startsWith("Bearer ")) {
-    return res
-      .status(401)
-      .json({ error: "Missing or invalid Authorization header" });
-  }
-
-  const token = authHeader.substring(7); // Remove "Bearer " prefix
-
-  if (!token || token.trim().length === 0) {
-    return res.status(401).json({ error: "Bearer token is empty" });
-  }
-
-  // Attach token to request for downstream use
-  req.bearerToken = token;
-
-  next();
-};
-
 app.post("/mcp", authenticateBearer, async (req, res) => {
   // Extract query parameters for vault configuration
   const accountId = (req.query.accountId as string) || process.env.ACCOUNT_ID;
@@ -675,46 +543,30 @@ app.post("/mcp", authenticateBearer, async (req, res) => {
   const workspaceId =
     (req.query.workspaceId as string) || process.env.WORKSPACE_ID;
 
-  // Validate required parameters
-  if (!vaultId) {
-    return res
-      .status(400)
-      .json({
-        error:
-          "vaultId is required (provide as query parameter or VAULT_ID environment variable)",
-      });
-  }
+  // Validate vault configuration using extracted validation function
+  const validation = validateVaultConfig({
+    vaultId,
+    vaultUrl,
+    accountId,
+    workspaceId,
+  });
 
-  if (!vaultUrl) {
-    return res
-      .status(400)
-      .json({
-        error:
-          "vaultUrl is required (provide as query parameter or VAULT_URL environment variable)",
-      });
+  if (!validation.isValid) {
+    return res.status(400).json({ error: validation.error });
   }
 
   if (!req.bearerToken) {
     return res.status(401).json({ error: "Bearer token is required" });
   }
 
-  // Extract clusterId from vaultUrl
-  const clusterIdMatch = vaultUrl.match(/https:\/\/([^.]+)\.vault/);
-  if (!clusterIdMatch || !clusterIdMatch[1]) {
-    return res
-      .status(400)
-      .json({
-        error:
-          "Invalid vaultUrl format. Expected format: https://<clusterId>.vault.skyflowapis.com",
-      });
-  }
-  const clusterId = clusterIdMatch[1];
+  // Use validated config
+  const { vaultId: validatedVaultId, clusterId } = validation.config!;
 
   // Create per-request Skyflow instance with bearer token
   const skyflowInstance = new Skyflow({
     vaultConfigs: [
       {
-        vaultId: vaultId,
+        vaultId: validatedVaultId,
         clusterId: clusterId,
         credentials: { token: req.bearerToken },
       },
@@ -734,7 +586,7 @@ app.post("/mcp", authenticateBearer, async (req, res) => {
   // Run the MCP request handling within the AsyncLocalStorage context
   // This makes the Skyflow instance available to all tools via getCurrentSkyflow()
   await requestContextStorage.run(
-    { skyflow: skyflowInstance, vaultId: vaultId },
+    { skyflow: skyflowInstance, vaultId: validatedVaultId },
     async () => {
       await server.connect(transport);
       await transport.handleRequest(req, res, req.body);
