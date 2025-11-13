@@ -14,3 +14,8 @@ package-lock.json
 .vercel
 .env*.local
 .mcp.json
+
+# Test coverage
+coverage/
+*.lcov
+.nyc_output/
