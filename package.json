@@ -3,6 +3,7 @@
 	"version": "1.0.0",
 	"description": "Skyflow MCP Integration",
 	"type": "module",
+	"main": "dist/server.js",
 	"scripts": {
 		"dev": "./dev.sh",
 		"build": "tsc",

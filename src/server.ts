@@ -5,7 +5,7 @@ import {
   ResourceTemplate,
 } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
-import express from "express";
+import express, { type Express } from "express";
 import { z } from "zod";
 import {
   DeidentifyTextOptions,
@@ -520,7 +520,7 @@ server.registerTool(
   }
 );
 
-const app = express();
+const app: Express = express();
 app.use(express.json({ limit: "5mb" })); // Limit for base64-encoded files
 
 // Serve static files from the public directory
@@ -594,12 +594,18 @@ app.post("/mcp", authenticateBearer, async (req, res) => {
   );
 });
 
-const port = parseInt(process.env.PORT || "3000");
-app
-  .listen(port, () => {
-    console.log(`Skyflow MCP Server running on http://localhost:${port}/mcp`);
-  })
-  .on("error", (error) => {
-    console.error("Server error:", error);
-    process.exit(1);
-  });
+// Export the Express app for serverless environments (like Vercel)
+export default app;
+
+// Only start the server if this file is run directly (not imported)
+if (import.meta.url === `file://${process.argv[1]}`) {
+  const port = parseInt(process.env.PORT || "3000");
+  app
+    .listen(port, () => {
+      console.log(`Skyflow MCP Server running on http://localhost:${port}/mcp`);
+    })
+    .on("error", (error) => {
+      console.error("Server error:", error);
+      process.exit(1);
+    });
+}
