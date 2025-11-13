@@ -2,8 +2,11 @@
 	"name": "sky-mcp",
 	"version": "1.0.0",
 	"description": "Skyflow MCP Integration",
+	"type": "module",
 	"scripts": {
 		"dev": "./dev.sh",
+		"build": "tsc",
+		"start": "node dist/server.js",
 		"server": "npx -y tsx src/server.ts",
 		"inspector": "npx -y @modelcontextprotocol/inspector",
 		"test": "vitest run",
