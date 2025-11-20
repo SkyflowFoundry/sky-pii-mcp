@@ -16,15 +16,17 @@ export interface ValidationResult {
  * Extract clusterId from vaultUrl
  * Pure function - easy to test!
  *
- * @param vaultUrl - The vault URL (e.g., https://abc123.vault.skyflowapis.com)
+ * @param vaultUrl - The vault URL (with or without https:// prefix)
  * @returns The cluster ID or null if invalid format
  *
  * @example
  * extractClusterId("https://abc123.vault.skyflowapis.com") // => "abc123"
+ * extractClusterId("abc123.vault.skyflowapis.com") // => "abc123"
  * extractClusterId("https://invalid.com") // => null
  */
 export function extractClusterId(vaultUrl: string): string | null {
-  const match = vaultUrl.match(/https:\/\/([^.]+)\.vault/);
+  // Match with or without https:// prefix
+  const match = vaultUrl.match(/(?:https?:\/\/)?([^.]+)\.vault/);
   return match?.[1] ?? null;
 }
 
@@ -69,7 +71,7 @@ export function validateVaultConfig(params: {
     return {
       isValid: false,
       error:
-        "Invalid vaultUrl format. Expected format: https://<clusterId>.vault.skyflowapis.com",
+        "Invalid vaultUrl format. Expected format: https://<clusterId>.vault.skyflowapis.com or <clusterId>.vault.skyflowapis.com",
     };
   }
 

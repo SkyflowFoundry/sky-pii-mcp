@@ -530,7 +530,7 @@ app.use(express.static("public"));
 declare global {
   namespace Express {
     interface Request {
-      bearerToken?: string;
+      skyflowCredentials?: { token: string } | { apiKey: string };
     }
   }
 }
@@ -555,20 +555,20 @@ app.post("/mcp", authenticateBearer, async (req, res) => {
     return res.status(400).json({ error: validation.error });
   }
 
-  if (!req.bearerToken) {
-    return res.status(401).json({ error: "Bearer token is required" });
+  if (!req.skyflowCredentials) {
+    return res.status(401).json({ error: "Credentials are required" });
   }
 
   // Use validated config
   const { vaultId: validatedVaultId, clusterId } = validation.config!;
 
-  // Create per-request Skyflow instance with bearer token
+  // Create per-request Skyflow instance with credentials (bearer token or API key)
   const skyflowInstance = new Skyflow({
     vaultConfigs: [
       {
         vaultId: validatedVaultId,
         clusterId: clusterId,
-        credentials: { token: req.bearerToken },
+        credentials: req.skyflowCredentials,
       },
     ],
   });

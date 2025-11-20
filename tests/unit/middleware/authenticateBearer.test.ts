@@ -1,7 +1,11 @@
 import { describe, it, expect } from "vitest";
-import { extractBearerToken } from "../../../src/lib/middleware/authenticateBearer";
+import {
+  extractBearerToken,
+  extractApiKey,
+  extractCredentials,
+} from "../../../src/lib/middleware/authenticateBearer";
 
-describe("Bearer Token Authentication", () => {
+describe("Credentials Authentication", () => {
   describe("extractBearerToken()", () => {
     describe("valid tokens", () => {
       it("should extract token from valid Bearer header", () => {
@@ -121,6 +125,154 @@ describe("Bearer Token Authentication", () => {
 
         expect(result.isValid).toBe(true);
         expect(result.token).toBe(" token  ");
+      });
+    });
+  });
+
+  describe("extractApiKey()", () => {
+    describe("valid API keys", () => {
+      it("should extract API key from valid parameter", () => {
+        const result = extractApiKey("my-api-key-123");
+
+        expect(result.isValid).toBe(true);
+        expect(result.token).toBe("my-api-key-123");
+        expect(result.error).toBeUndefined();
+      });
+
+      it("should handle API keys with special characters", () => {
+        const result = extractApiKey("api_key-with.special-chars_123");
+
+        expect(result.isValid).toBe(true);
+        expect(result.token).toBe("api_key-with.special-chars_123");
+      });
+
+      it("should handle long API keys", () => {
+        const longKey = "k".repeat(500);
+        const result = extractApiKey(longKey);
+
+        expect(result.isValid).toBe(true);
+        expect(result.token).toBe(longKey);
+      });
+
+      it("should trim whitespace from API keys", () => {
+        const result = extractApiKey("  my-api-key  ");
+
+        expect(result.isValid).toBe(true);
+        expect(result.token).toBe("my-api-key");
+      });
+    });
+
+    describe("missing or invalid API keys", () => {
+      it("should return error for undefined parameter", () => {
+        const result = extractApiKey(undefined);
+
+        expect(result.isValid).toBe(false);
+        expect(result.token).toBeUndefined();
+        expect(result.error).toBe("Missing or invalid apiKey query parameter");
+      });
+
+      it("should return error for empty string", () => {
+        const result = extractApiKey("");
+
+        expect(result.isValid).toBe(false);
+        expect(result.error).toBe("Missing or invalid apiKey query parameter");
+      });
+
+      it("should return error for whitespace-only string", () => {
+        const result = extractApiKey("   ");
+
+        expect(result.isValid).toBe(false);
+        expect(result.error).toBe("API key is empty");
+      });
+    });
+  });
+
+  describe("extractCredentials()", () => {
+    describe("bearer token takes precedence", () => {
+      it("should use bearer token when both are provided", () => {
+        const result = extractCredentials("Bearer token123", "api-key-456");
+
+        expect(result.isValid).toBe(true);
+        expect(result.credentials).toEqual({ token: "token123" });
+      });
+
+      it("should use bearer token when only bearer is provided", () => {
+        const result = extractCredentials("Bearer token123", undefined);
+
+        expect(result.isValid).toBe(true);
+        expect(result.credentials).toEqual({ token: "token123" });
+      });
+    });
+
+    describe("API key fallback", () => {
+      it("should use API key when bearer token is missing", () => {
+        const result = extractCredentials(undefined, "api-key-456");
+
+        expect(result.isValid).toBe(true);
+        expect(result.credentials).toEqual({ apiKey: "api-key-456" });
+      });
+
+      it("should use API key when bearer token is invalid", () => {
+        const result = extractCredentials("InvalidAuth", "api-key-456");
+
+        expect(result.isValid).toBe(true);
+        expect(result.credentials).toEqual({ apiKey: "api-key-456" });
+      });
+
+      it("should use API key when bearer token is empty", () => {
+        const result = extractCredentials("Bearer ", "api-key-456");
+
+        expect(result.isValid).toBe(true);
+        expect(result.credentials).toEqual({ apiKey: "api-key-456" });
+      });
+    });
+
+    describe("both credentials missing or invalid", () => {
+      it("should return error when both are undefined", () => {
+        const result = extractCredentials(undefined, undefined);
+
+        expect(result.isValid).toBe(false);
+        expect(result.credentials).toBeUndefined();
+        expect(result.error).toBe(
+          "Missing or invalid credentials. Provide either Authorization header with Bearer token or apiKey query parameter."
+        );
+      });
+
+      it("should return error when both are invalid", () => {
+        const result = extractCredentials("InvalidAuth", "");
+
+        expect(result.isValid).toBe(false);
+        expect(result.credentials).toBeUndefined();
+        expect(result.error).toBe(
+          "Missing or invalid credentials. Provide either Authorization header with Bearer token or apiKey query parameter."
+        );
+      });
+
+      it("should return error when bearer is empty and apiKey is whitespace", () => {
+        const result = extractCredentials("Bearer ", "   ");
+
+        expect(result.isValid).toBe(false);
+        expect(result.error).toBe(
+          "Missing or invalid credentials. Provide either Authorization header with Bearer token or apiKey query parameter."
+        );
+      });
+    });
+
+    describe("credential format validation", () => {
+      it("should return credentials in Skyflow token format", () => {
+        const result = extractCredentials("Bearer my-token", undefined);
+
+        expect(result.credentials).toEqual({ token: "my-token" });
+        expect(result.credentials).toHaveProperty("token");
+        expect(result.credentials).not.toHaveProperty("apiKey");
+      });
+
+      it("should return credentials in Skyflow apiKey format", () => {
+        const result = extractCredentials(undefined, "my-api-key");
+
+        expect(result.credentials).toEqual({ apiKey: "my-api-key" });
+        expect(result.credentials).toHaveProperty("apiKey");
+        expect(result.credentials).not.toHaveProperty("token");
       });
     });
   });

@@ -49,8 +49,8 @@ curl -X POST "http://localhost:3000/mcp?vaultId={vault_id}&vaultUrl={vault_url}"
 
 **Express HTTP Server** (`src/server.ts`)
 - Serves a single `/mcp` endpoint that handles all MCP protocol requests
-- Accepts query parameters: `accountId`, `vaultId`, `vaultUrl`, `workspaceId`
-- Uses bearer token extraction middleware to validate Authorization header format
+- Accepts query parameters: `accountId`, `vaultId`, `vaultUrl`, `workspaceId`, `apiKey` (optional)
+- Uses credentials extraction middleware to validate either Authorization header or apiKey query parameter
 - Configured with 5MB JSON payload limit to support base64-encoded files
 
 **MCP Server Instance**
@@ -68,7 +68,8 @@ curl -X POST "http://localhost:3000/mcp?vaultId={vault_id}&vaultUrl={vault_url}"
 - Creates a **new Skyflow instance for each request** (no global singleton)
 - Configured with vault credentials from query parameters (or fallback to environment variables)
 - Extracts `clusterId` from `vaultUrl` using regex pattern per-request
-- Uses **bearer token pass-through** - client's bearer token is forwarded to Skyflow API
+- Supports **two credential types**: bearer token (from Authorization header) or API key (from query parameter)
+- Credentials are forwarded to Skyflow API in the appropriate format: `{ token: string }` or `{ apiKey: string }`
 - Uses `AsyncLocalStorage` to make Skyflow instance available to tools during request handling
 - Tools access the current request's Skyflow instance via `getCurrentSkyflow()` and `getCurrentVaultId()`
 
@@ -104,7 +105,9 @@ This ensures type safety and provides clear error messages for invalid inputs.
 
 ## Environment Configuration
 
-**Authentication Model**: The server uses **bearer token pass-through** - clients provide their Skyflow bearer token which is forwarded to the Skyflow API.
+**Authentication Model**: The server supports two authentication methods (bearer token takes precedence):
+1. **Bearer token pass-through** (primary): Clients provide their Skyflow bearer token via `Authorization` header, which is forwarded to the Skyflow API
+2. **API key fallback**: If no bearer token is provided, clients can pass a Skyflow API key via `apiKey` query parameter
 
 Optional fallback variables in `.env.local`:
 - `VAULT_ID`: Your Skyflow vault identifier (can be overridden via query parameter)
@@ -114,18 +117,25 @@ Optional fallback variables in `.env.local`:
 - `PORT`: Server port (default: 3000)
 
 **Removed variables** (no longer used):
-- `SKYFLOW_API_KEY`: No longer needed - bearer token is passed through from client
-- `REQUIRED_BEARER_TOKEN`: No longer needed - all valid bearer tokens are accepted and forwarded to Skyflow
+- `SKYFLOW_API_KEY`: No longer needed - credentials are passed from client
+- `REQUIRED_BEARER_TOKEN`: No longer needed - all valid credentials are accepted and forwarded to Skyflow
 
 The server extracts `clusterId` from `vaultUrl` (query parameter or env var) using the pattern: `https://([^.]+).vault`
 
 **Connection Format**:
+
+Primary method (bearer token via header):
 ```
 https://your-server.com/mcp?vaultId={vault_id}&vaultUrl={vault_url}&accountId={account_id}&workspaceId={workspace_id}
 ```
 With header:
 ```
 Authorization: Bearer {your_skyflow_bearer_token}
+```
+
+Fallback method (API key via query parameter):
+```
+https://your-server.com/mcp?vaultId={vault_id}&vaultUrl={vault_url}&accountId={account_id}&workspaceId={workspace_id}&apiKey={your_skyflow_api_key}
 ```
 
 ## Port Configuration
@@ -153,12 +163,12 @@ app.post("/mcp", authenticateBearer, async (req, res) => {
   const vaultUrl = (req.query.vaultUrl as string) || process.env.VAULT_URL;
   const clusterId = vaultUrl.match(/https:\/\/([^.]+)\.vault/)?.[1];
 
-  // Create per-request Skyflow instance with bearer token
+  // Create per-request Skyflow instance with credentials (bearer token or API key)
   const skyflowInstance = new Skyflow({
     vaultConfigs: [{
       vaultId: vaultId,
       clusterId: clusterId,
-      credentials: { token: req.bearerToken }, // Pass-through from client
+      credentials: req.skyflowCredentials, // Either { token } or { apiKey }
     }],
   });
 
@@ -183,12 +193,15 @@ app.post("/mcp", authenticateBearer, async (req, res) => {
 });
 ```
 
-**Bearer Token Pass-Through Authentication**
-- Extracts bearer token from `Authorization` header
-- Validates format (must start with "Bearer " and contain non-empty token)
-- Returns appropriate HTTP status codes: 401 for missing/invalid auth
-- Token is attached to request object and forwarded to Skyflow API
-- No server-side token validation - Skyflow API validates the token
+**Credentials Authentication**
+- Supports two authentication methods with fallback logic:
+  1. **Bearer token** (primary): Extracted from `Authorization: Bearer <token>` header
+  2. **API key** (fallback): Extracted from `apiKey` query parameter
+- Bearer token takes precedence if both are provided
+- Validates format and presence of credentials
+- Returns appropriate HTTP status codes: 401 for missing/invalid credentials
+- Credentials are attached to request object in Skyflow SDK format and forwarded to Skyflow API
+- No server-side credential validation - Skyflow API validates the credentials
 
 **Tool Response Structure**
 All tools return both text and structured content:
@@ -212,7 +225,7 @@ return {
 
 1. **Don't reuse transport or Skyflow instances** - Always create new ones per request
 2. **File size limits** - Base64 encoding adds ~33% overhead; 5MB limit means ~3.75MB original files
-3. **Bearer token required** - All `/mcp` requests must include valid `Authorization: Bearer <token>` header with a Skyflow bearer token
+3. **Credentials required** - All `/mcp` requests must include either valid `Authorization: Bearer <token>` header with a Skyflow bearer token OR `apiKey` query parameter with a Skyflow API key
 4. **Query parameters required** - `vaultId` and `vaultUrl` must be provided (via query params or env vars)
 5. **Vault configuration** - `clusterId` is automatically extracted from `vaultUrl`, don't set it separately
 6. **Entity type validation** - Use exact strings from `ENTITY_MAP` keys, not the enum values

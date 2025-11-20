@@ -6,7 +6,7 @@ import {
 
 describe("Vault Configuration Validation", () => {
   describe("extractClusterId()", () => {
-    it("should extract cluster ID from valid vault URLs", () => {
+    it("should extract cluster ID from valid vault URLs with https://", () => {
       expect(extractClusterId("https://abc123.vault.skyflowapis.com")).toBe(
         "abc123"
       );
@@ -18,9 +18,27 @@ describe("Vault Configuration Validation", () => {
       );
     });
 
+    it("should extract cluster ID from valid vault URLs without protocol", () => {
+      expect(extractClusterId("abc123.vault.skyflowapis.com")).toBe(
+        "abc123"
+      );
+      expect(extractClusterId("test-cluster.vault.skyflowapis.com")).toBe(
+        "test-cluster"
+      );
+      expect(extractClusterId("prod-123.vault.example.com")).toBe(
+        "prod-123"
+      );
+    });
+
+    it("should extract cluster ID from http:// URLs (legacy support)", () => {
+      expect(extractClusterId("http://abc123.vault.skyflowapis.com")).toBe(
+        "abc123"
+      );
+    });
+
     it("should return null for invalid vault URLs", () => {
       expect(extractClusterId("https://example.com")).toBeNull();
-      expect(extractClusterId("http://abc123.vault.skyflowapis.com")).toBeNull(); // http not https
+      expect(extractClusterId("example.com")).toBeNull();
       expect(extractClusterId("not-a-url")).toBeNull();
       expect(extractClusterId("")).toBeNull();
     });
@@ -28,6 +46,9 @@ describe("Vault Configuration Validation", () => {
     it("should handle URLs with additional paths", () => {
       expect(
         extractClusterId("https://abc123.vault.skyflowapis.com/path/to/resource")
+      ).toBe("abc123");
+      expect(
+        extractClusterId("abc123.vault.skyflowapis.com/path/to/resource")
       ).toBe("abc123");
     });
   });
@@ -64,6 +85,23 @@ describe("Vault Configuration Validation", () => {
         expect(result.config).toEqual({
           vaultId: "vault123",
           vaultUrl: "https://abc123.vault.skyflowapis.com",
+          clusterId: "abc123",
+          accountId: undefined,
+          workspaceId: undefined,
+        });
+      });
+
+      it("should accept vaultUrl without https:// protocol", () => {
+        const result = validateVaultConfig({
+          vaultId: "vault123",
+          vaultUrl: "abc123.vault.skyflowapis.com",
+        });
+
+        expect(result.isValid).toBe(true);
+        expect(result.error).toBeUndefined();
+        expect(result.config).toEqual({
+          vaultId: "vault123",
+          vaultUrl: "abc123.vault.skyflowapis.com",
           clusterId: "abc123",
           accountId: undefined,
           workspaceId: undefined,
@@ -128,15 +166,15 @@ describe("Vault Configuration Validation", () => {
 
         expect(result.isValid).toBe(false);
         expect(result.error).toBe(
-          "Invalid vaultUrl format. Expected format: https://<clusterId>.vault.skyflowapis.com"
+          "Invalid vaultUrl format. Expected format: https://<clusterId>.vault.skyflowapis.com or <clusterId>.vault.skyflowapis.com"
         );
         expect(result.config).toBeUndefined();
       });
 
-      it("should return error for http (not https) URLs", () => {
+      it("should return error for invalid URLs without protocol", () => {
         const result = validateVaultConfig({
           vaultId: "vault123",
-          vaultUrl: "http://abc123.vault.skyflowapis.com",
+          vaultUrl: "invalid.com",
         });
 
         expect(result.isValid).toBe(false);
