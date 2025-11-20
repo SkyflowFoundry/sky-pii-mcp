@@ -563,15 +563,23 @@ app.post("/mcp", authenticateBearer, async (req, res) => {
   const { vaultId: validatedVaultId, clusterId } = validation.config!;
 
   // Create per-request Skyflow instance with credentials (bearer token or API key)
-  const skyflowInstance = new Skyflow({
-    vaultConfigs: [
-      {
-        vaultId: validatedVaultId,
-        clusterId: clusterId,
-        credentials: req.skyflowCredentials,
-      },
-    ],
-  });
+  let skyflowInstance: Skyflow;
+  try {
+    skyflowInstance = new Skyflow({
+      vaultConfigs: [
+        {
+          vaultId: validatedVaultId,
+          clusterId: clusterId,
+          credentials: req.skyflowCredentials,
+        },
+      ],
+    });
+  } catch (error) {
+    console.log("Skyflow SDK initialization failed:", error instanceof Error ? error.message : "Unknown error");
+    return res.status(401).json({
+      error: "Invalid credentials. Please provide valid Skyflow bearer token or API key."
+    });
+  }
 
   // Create a new transport for each request to prevent request ID collisions
   const transport = new StreamableHTTPServerTransport({
