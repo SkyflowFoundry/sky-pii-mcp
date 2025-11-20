@@ -11,7 +11,7 @@ describe("Credentials Authentication", () => {
       it("should extract token from valid Bearer header", () => {
         const result = extractBearerToken("Bearer abc123xyz");
 
-        expect(result.isValid).toBe(true);
+        expect(result.isPresent).toBe(true);
         expect(result.token).toBe("abc123xyz");
         expect(result.error).toBeUndefined();
       });
@@ -19,7 +19,7 @@ describe("Credentials Authentication", () => {
       it("should handle tokens with special characters", () => {
         const result = extractBearerToken("Bearer abc-123_xyz.token");
 
-        expect(result.isValid).toBe(true);
+        expect(result.isPresent).toBe(true);
         expect(result.token).toBe("abc-123_xyz.token");
       });
 
@@ -27,7 +27,7 @@ describe("Credentials Authentication", () => {
         const longToken = "a".repeat(500);
         const result = extractBearerToken(`Bearer ${longToken}`);
 
-        expect(result.isValid).toBe(true);
+        expect(result.isPresent).toBe(true);
         expect(result.token).toBe(longToken);
       });
 
@@ -35,7 +35,7 @@ describe("Credentials Authentication", () => {
         // Some tokens might have spaces (though uncommon)
         const result = extractBearerToken("Bearer token with spaces");
 
-        expect(result.isValid).toBe(true);
+        expect(result.isPresent).toBe(true);
         expect(result.token).toBe("token with spaces");
       });
     });
@@ -44,7 +44,7 @@ describe("Credentials Authentication", () => {
       it("should return error for undefined header", () => {
         const result = extractBearerToken(undefined);
 
-        expect(result.isValid).toBe(false);
+        expect(result.isPresent).toBe(false);
         expect(result.token).toBeUndefined();
         expect(result.error).toBe("Missing or invalid Authorization header");
       });
@@ -52,28 +52,28 @@ describe("Credentials Authentication", () => {
       it("should return error for empty string header", () => {
         const result = extractBearerToken("");
 
-        expect(result.isValid).toBe(false);
+        expect(result.isPresent).toBe(false);
         expect(result.error).toBe("Missing or invalid Authorization header");
       });
 
       it("should return error for header without Bearer prefix", () => {
         const result = extractBearerToken("abc123xyz");
 
-        expect(result.isValid).toBe(false);
+        expect(result.isPresent).toBe(false);
         expect(result.error).toBe("Missing or invalid Authorization header");
       });
 
       it("should return error for wrong auth scheme", () => {
         const result = extractBearerToken("Basic abc123xyz");
 
-        expect(result.isValid).toBe(false);
+        expect(result.isPresent).toBe(false);
         expect(result.error).toBe("Missing or invalid Authorization header");
       });
 
       it("should return error for case-sensitive Bearer", () => {
         const result = extractBearerToken("bearer abc123xyz"); // lowercase
 
-        expect(result.isValid).toBe(false);
+        expect(result.isPresent).toBe(false);
         expect(result.error).toBe("Missing or invalid Authorization header");
       });
     });
@@ -82,7 +82,7 @@ describe("Credentials Authentication", () => {
       it("should return error for Bearer with no token", () => {
         const result = extractBearerToken("Bearer ");
 
-        expect(result.isValid).toBe(false);
+        expect(result.isPresent).toBe(false);
         expect(result.token).toBeUndefined();
         expect(result.error).toBe("Bearer token is empty");
       });
@@ -90,14 +90,14 @@ describe("Credentials Authentication", () => {
       it("should return error for Bearer with only whitespace", () => {
         const result = extractBearerToken("Bearer    ");
 
-        expect(result.isValid).toBe(false);
+        expect(result.isPresent).toBe(false);
         expect(result.error).toBe("Bearer token is empty");
       });
 
       it("should return error for Bearer with tabs", () => {
         const result = extractBearerToken("Bearer \t\t");
 
-        expect(result.isValid).toBe(false);
+        expect(result.isPresent).toBe(false);
         expect(result.error).toBe("Bearer token is empty");
       });
     });
@@ -109,21 +109,21 @@ describe("Credentials Authentication", () => {
         const result = extractBearerToken("Bearer  abc123");
 
         // The token will be " abc123" (with leading space)
-        expect(result.isValid).toBe(true);
+        expect(result.isPresent).toBe(true);
         expect(result.token).toBe(" abc123");
       });
 
       it("should handle minimum length token", () => {
         const result = extractBearerToken("Bearer a");
 
-        expect(result.isValid).toBe(true);
+        expect(result.isPresent).toBe(true);
         expect(result.token).toBe("a");
       });
 
       it("should not trim token value", () => {
         const result = extractBearerToken("Bearer  token  ");
 
-        expect(result.isValid).toBe(true);
+        expect(result.isPresent).toBe(true);
         expect(result.token).toBe(" token  ");
       });
     });
@@ -134,7 +134,7 @@ describe("Credentials Authentication", () => {
       it("should extract API key from valid parameter", () => {
         const result = extractApiKey("my-api-key-123");
 
-        expect(result.isValid).toBe(true);
+        expect(result.isPresent).toBe(true);
         expect(result.token).toBe("my-api-key-123");
         expect(result.error).toBeUndefined();
       });
@@ -142,7 +142,7 @@ describe("Credentials Authentication", () => {
       it("should handle API keys with special characters", () => {
         const result = extractApiKey("api_key-with.special-chars_123");
 
-        expect(result.isValid).toBe(true);
+        expect(result.isPresent).toBe(true);
         expect(result.token).toBe("api_key-with.special-chars_123");
       });
 
@@ -150,14 +150,14 @@ describe("Credentials Authentication", () => {
         const longKey = "k".repeat(500);
         const result = extractApiKey(longKey);
 
-        expect(result.isValid).toBe(true);
+        expect(result.isPresent).toBe(true);
         expect(result.token).toBe(longKey);
       });
 
       it("should trim whitespace from API keys", () => {
         const result = extractApiKey("  my-api-key  ");
 
-        expect(result.isValid).toBe(true);
+        expect(result.isPresent).toBe(true);
         expect(result.token).toBe("my-api-key");
       });
     });
@@ -166,7 +166,7 @@ describe("Credentials Authentication", () => {
       it("should return error for undefined parameter", () => {
         const result = extractApiKey(undefined);
 
-        expect(result.isValid).toBe(false);
+        expect(result.isPresent).toBe(false);
         expect(result.token).toBeUndefined();
         expect(result.error).toBe("Missing or invalid apiKey query parameter");
       });
@@ -174,14 +174,14 @@ describe("Credentials Authentication", () => {
       it("should return error for empty string", () => {
         const result = extractApiKey("");
 
-        expect(result.isValid).toBe(false);
+        expect(result.isPresent).toBe(false);
         expect(result.error).toBe("Missing or invalid apiKey query parameter");
       });
 
       it("should return error for whitespace-only string", () => {
         const result = extractApiKey("   ");
 
-        expect(result.isValid).toBe(false);
+        expect(result.isPresent).toBe(false);
         expect(result.error).toBe("API key is empty");
       });
     });
@@ -192,14 +192,14 @@ describe("Credentials Authentication", () => {
       it("should use bearer token when both are provided", () => {
         const result = extractCredentials("Bearer token123", "api-key-456");
 
-        expect(result.isValid).toBe(true);
+        expect(result.isPresent).toBe(true);
         expect(result.credentials).toEqual({ token: "token123" });
       });
 
       it("should use bearer token when only bearer is provided", () => {
         const result = extractCredentials("Bearer token123", undefined);
 
-        expect(result.isValid).toBe(true);
+        expect(result.isPresent).toBe(true);
         expect(result.credentials).toEqual({ token: "token123" });
       });
     });
@@ -208,21 +208,21 @@ describe("Credentials Authentication", () => {
       it("should use API key when bearer token is missing", () => {
         const result = extractCredentials(undefined, "api-key-456");
 
-        expect(result.isValid).toBe(true);
+        expect(result.isPresent).toBe(true);
         expect(result.credentials).toEqual({ apiKey: "api-key-456" });
       });
 
       it("should use API key when bearer token is invalid", () => {
         const result = extractCredentials("InvalidAuth", "api-key-456");
 
-        expect(result.isValid).toBe(true);
+        expect(result.isPresent).toBe(true);
         expect(result.credentials).toEqual({ apiKey: "api-key-456" });
       });
 
       it("should use API key when bearer token is empty", () => {
         const result = extractCredentials("Bearer ", "api-key-456");
 
-        expect(result.isValid).toBe(true);
+        expect(result.isPresent).toBe(true);
         expect(result.credentials).toEqual({ apiKey: "api-key-456" });
       });
     });
@@ -231,7 +231,7 @@ describe("Credentials Authentication", () => {
       it("should return error when both are undefined", () => {
         const result = extractCredentials(undefined, undefined);
 
-        expect(result.isValid).toBe(false);
+        expect(result.isPresent).toBe(false);
         expect(result.credentials).toBeUndefined();
         expect(result.error).toBe(
           "Missing or invalid credentials. Provide either Authorization header with Bearer token or apiKey query parameter."
@@ -241,7 +241,7 @@ describe("Credentials Authentication", () => {
       it("should return error when both are invalid", () => {
         const result = extractCredentials("InvalidAuth", "");
 
-        expect(result.isValid).toBe(false);
+        expect(result.isPresent).toBe(false);
         expect(result.credentials).toBeUndefined();
         expect(result.error).toBe(
           "Missing or invalid credentials. Provide either Authorization header with Bearer token or apiKey query parameter."
@@ -251,7 +251,7 @@ describe("Credentials Authentication", () => {
       it("should return error when bearer is empty and apiKey is whitespace", () => {
         const result = extractCredentials("Bearer ", "   ");
 
-        expect(result.isValid).toBe(false);
+        expect(result.isPresent).toBe(false);
         expect(result.error).toBe(
           "Missing or invalid credentials. Provide either Authorization header with Bearer token or apiKey query parameter."
         );
