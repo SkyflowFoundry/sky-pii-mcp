@@ -5,7 +5,7 @@ import {
   ResourceTemplate,
 } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
-import express from "express";
+import express, { type Express } from "express";
 import { z } from "zod";
 import {
   DeidentifyTextOptions,
@@ -18,109 +18,18 @@ import {
   TokenType,
   Skyflow,
   SkyflowError,
-  DetectEntities,
-  MaskingMethod,
-  DetectOutputTranscription,
 } from "skyflow-node";
-import crypto from 'crypto';
+import { AsyncLocalStorage } from "async_hooks";
+import {
+  getEntityEnum,
+  getMaskingMethodEnum,
+  getTranscriptionEnum,
+} from "./lib/mappings/entityMaps.js";
+import { validateVaultConfig } from "./lib/validation/vaultConfig.js";
+import { authenticateBearer } from "./lib/middleware/authenticateBearer.js";
 
 /** Default maximum wait time for file dehydration operations (in seconds) */
 const DEFAULT_MAX_WAIT_TIME_SECONDS = 64;
-
-/**
- * Type-safe mapping from string entity names to DetectEntities enum values.
- * This ensures proper type checking and prevents runtime errors from invalid entity mappings.
- */
-const ENTITY_MAP: Record<string, DetectEntities> = {
-  age: DetectEntities.AGE,
-  bank_account: DetectEntities.BANK_ACCOUNT,
-  credit_card: DetectEntities.CREDIT_CARD,
-  credit_card_expiration: DetectEntities.CREDIT_CARD_EXPIRATION,
-  cvv: DetectEntities.CVV,
-  date: DetectEntities.DATE,
-  date_interval: DetectEntities.DATE_INTERVAL,
-  dob: DetectEntities.DOB,
-  driver_license: DetectEntities.DRIVER_LICENSE,
-  email_address: DetectEntities.EMAIL_ADDRESS,
-  healthcare_number: DetectEntities.HEALTHCARE_NUMBER,
-  ip_address: DetectEntities.IP_ADDRESS,
-  location: DetectEntities.LOCATION,
-  name: DetectEntities.NAME,
-  numerical_pii: DetectEntities.NUMERICAL_PII,
-  phone_number: DetectEntities.PHONE_NUMBER,
-  ssn: DetectEntities.SSN,
-  url: DetectEntities.URL,
-  vehicle_id: DetectEntities.VEHICLE_ID,
-  medical_code: DetectEntities.MEDICAL_CODE,
-  name_family: DetectEntities.NAME_FAMILY,
-  name_given: DetectEntities.NAME_GIVEN,
-  account_number: DetectEntities.ACCOUNT_NUMBER,
-  event: DetectEntities.EVENT,
-  filename: DetectEntities.FILENAME,
-  gender: DetectEntities.GENDER,
-  language: DetectEntities.LANGUAGE,
-  location_address: DetectEntities.LOCATION_ADDRESS,
-  location_city: DetectEntities.LOCATION_CITY,
-  location_coordinate: DetectEntities.LOCATION_COORDINATE,
-  location_country: DetectEntities.LOCATION_COUNTRY,
-  location_state: DetectEntities.LOCATION_STATE,
-  location_zip: DetectEntities.LOCATION_ZIP,
-  marital_status: DetectEntities.MARITAL_STATUS,
-  money: DetectEntities.MONEY,
-  name_medical_professional: DetectEntities.NAME_MEDICAL_PROFESSIONAL,
-  occupation: DetectEntities.OCCUPATION,
-  organization: DetectEntities.ORGANIZATION,
-  organization_medical_facility: DetectEntities.ORGANIZATION_MEDICAL_FACILITY,
-  origin: DetectEntities.ORIGIN,
-  passport_number: DetectEntities.PASSPORT_NUMBER,
-  password: DetectEntities.PASSWORD,
-  physical_attribute: DetectEntities.PHYSICAL_ATTRIBUTE,
-  political_affiliation: DetectEntities.POLITICAL_AFFILIATION,
-  religion: DetectEntities.RELIGION,
-  time: DetectEntities.TIME,
-  username: DetectEntities.USERNAME,
-  zodiac_sign: DetectEntities.ZODIAC_SIGN,
-  blood_type: DetectEntities.BLOOD_TYPE,
-  condition: DetectEntities.CONDITION,
-  dose: DetectEntities.DOSE,
-  drug: DetectEntities.DRUG,
-  injury: DetectEntities.INJURY,
-  medical_process: DetectEntities.MEDICAL_PROCESS,
-  statistics: DetectEntities.STATISTICS,
-  routing_number: DetectEntities.ROUTING_NUMBER,
-  corporate_action: DetectEntities.CORPORATE_ACTION,
-  financial_metric: DetectEntities.FINANCIAL_METRIC,
-  product: DetectEntities.PRODUCT,
-  trend: DetectEntities.TREND,
-  duration: DetectEntities.DURATION,
-  location_address_street: DetectEntities.LOCATION_ADDRESS_STREET,
-  all: DetectEntities.ALL,
-  sexuality: DetectEntities.SEXUALITY,
-  effect: DetectEntities.EFFECT,
-  project: DetectEntities.PROJECT,
-  organization_id: DetectEntities.ORGANIZATION_ID,
-  day: DetectEntities.DAY,
-  month: DetectEntities.MONTH,
-  // Note: 'year' entity is not available in the current skyflow-node version
-};
-
-/**
- * Type-safe mapping from string masking method names to MaskingMethod enum values.
- */
-const MASKING_METHOD_MAP: Record<string, MaskingMethod> = {
-  BLACKBOX: MaskingMethod.Blackbox,
-  // Note: 'PIXELATE' is not available in the current skyflow-node version
-  BLUR: MaskingMethod.Blur,
-  // Note: 'REDACT' is not available in the current skyflow-node version
-};
-
-/**
- * Type-safe mapping from string transcription names to DetectOutputTranscription enum values.
- */
-const TRANSCRIPTION_MAP: Record<string, DetectOutputTranscription> = {
-  PLAINTEXT_TRANSCRIPTION: DetectOutputTranscription.PLAINTEXT_TRANSCRIPTION,
-  DIARIZED_TRANSCRIPTION: DetectOutputTranscription.DIARIZED_TRANSCRIPTION,
-};
 
 /** TypeScript interface for detected entity response items */
 interface DetectedEntityItem {
@@ -148,31 +57,43 @@ interface DeidentifyFileOutput {
   status?: string;
 }
 
+/**
+ * AsyncLocalStorage for storing per-request Skyflow instances
+ * This allows tools to access the current request's Skyflow client
+ */
+interface RequestContext {
+  skyflow: Skyflow;
+  vaultId: string;
+}
+
+const requestContextStorage = new AsyncLocalStorage<RequestContext>();
+
+/**
+ * Get the Skyflow instance for the current request context
+ */
+function getCurrentSkyflow(): Skyflow {
+  const context = requestContextStorage.getStore();
+  if (!context) {
+    throw new Error("No Skyflow instance available in current request context");
+  }
+  return context.skyflow;
+}
+
+/**
+ * Get the vaultId for the current request context
+ */
+function getCurrentVaultId(): string {
+  const context = requestContextStorage.getStore();
+  if (!context) {
+    throw new Error("No vaultId available in current request context");
+  }
+  return context.vaultId;
+}
+
 // Create an MCP server
 const server = new McpServer({
   name: "demo-server",
   version: "1.0.0",
-});
-
-// Create a Skyflow vault client
-const vaultUrl = process.env.VAULT_URL || "";
-const clusterId = vaultUrl.match(/https:\/\/([^.]+)\.vault/)?.[1] || "";
-
-// Use API key for authentication
-const apiKey = process.env.SKYFLOW_API_KEY;
-
-if (!apiKey) {
-  throw new Error("SKYFLOW_API_KEY environment variable is required");
-}
-
-const skyflow = new Skyflow({
-  vaultConfigs: [
-    {
-      vaultId: process.env.VAULT_ID || "",
-      clusterId: clusterId,
-      credentials: { apiKey: apiKey },
-    },
-  ],
 });
 
 /**
@@ -201,11 +122,14 @@ server.registerTool(
     // TODO: add support for custom restrict regex list, include in the tool input schema
     // options.setRestrictRegexList([
     //   "/.{3,}@[a-zA-Z]{2,}\.[a-zA-Z]{2,}/g", // Email addresses with at least 3 characters before '@'
-    // ]); 
+    // ]);
     // TODO: add support for custom allow regex list, include in the tool input schema. Note that allow wins over restrict if the same pattern is in both lists.
     // options.setAllowRegexList([
     //   "/.{3,}@[a-zA-Z]{2,}\.[a-zA-Z]{2,}/g", // Email addresses with at least 3 characters before '@'
-    // ]); 
+    // ]);
+
+    // Get the per-request Skyflow instance
+    const skyflow = getCurrentSkyflow();
 
     const response = await skyflow
       .detect()
@@ -240,6 +164,9 @@ server.registerTool(
     },
   },
   async ({ inputString }) => {
+    // Get the per-request Skyflow instance
+    const skyflow = getCurrentSkyflow();
+
     const response = await skyflow
       .detect()
       .reidentifyText(new ReidentifyTextRequest(inputString));
@@ -459,23 +386,13 @@ server.registerTool(
 
       // Set entities if provided - use type-safe mapping
       if (entities && entities.length > 0) {
-        const entityEnums = entities.map((e) => {
-          const entityEnum = ENTITY_MAP[e];
-          if (!entityEnum) {
-            throw new Error(`Invalid entity type: ${e}`);
-          }
-          return entityEnum;
-        });
+        const entityEnums = entities.map((e) => getEntityEnum(e));
         options.setEntities(entityEnums);
       }
 
       // Set masking method for images - use type-safe mapping
       if (maskingMethod) {
-        const maskingEnum = MASKING_METHOD_MAP[maskingMethod];
-        if (!maskingEnum) {
-          throw new Error(`Invalid masking method: ${maskingMethod}`);
-        }
-        options.setMaskingMethod(maskingEnum);
+        options.setMaskingMethod(getMaskingMethodEnum(maskingMethod));
       }
 
       // Set output options
@@ -492,11 +409,7 @@ server.registerTool(
       }
 
       if (outputTranscription) {
-        const transcriptionEnum = TRANSCRIPTION_MAP[outputTranscription];
-        if (!transcriptionEnum) {
-          throw new Error(`Invalid transcription type: ${outputTranscription}`);
-        }
-        options.setOutputTranscription(transcriptionEnum);
+        options.setOutputTranscription(getTranscriptionEnum(outputTranscription));
       }
 
       if (pixelDensity) {
@@ -510,8 +423,10 @@ server.registerTool(
       // Set wait time (default to max, or use provided value)
       options.setWaitTime(waitTime || DEFAULT_MAX_WAIT_TIME_SECONDS);
 
-      // Call deidentifyFile - need to get vaultId from environment
-      const vaultId = process.env.VAULT_ID || "";
+      // Get the per-request Skyflow instance and vaultId
+      const skyflow = getCurrentSkyflow();
+      const vaultId = getCurrentVaultId();
+
       const response = await skyflow
         .detect(vaultId)
         .deidentifyFile(fileReq, options);
@@ -605,46 +520,59 @@ server.registerTool(
   }
 );
 
-const app = express();
+const app: Express = express();
 app.use(express.json({ limit: "5mb" })); // Limit for base64-encoded files
 
-// Bearer token authentication middleware
-const authenticateBearer = (
-  req: express.Request,
-  res: express.Response,
-  next: express.NextFunction
-) => {
-  const requiredToken = process.env.REQUIRED_BEARER_TOKEN;
+// Serve static files from the public directory
+app.use(express.static("public"));
 
-  if (!requiredToken) {
-    console.error("REQUIRED_BEARER_TOKEN not configured");
-    return res
-      .status(500)
-      .json({ error: "Server authentication not configured" });
+// Extend Express Request type to include custom properties
+declare global {
+  namespace Express {
+    interface Request {
+      skyflowCredentials?: { token: string } | { apiKey: string };
+    }
   }
-
-  const authHeader = req.headers.authorization;
-
-  if (!authHeader || !authHeader.startsWith("Bearer ")) {
-    return res
-      .status(401)
-      .json({ error: "Missing or invalid Authorization header" });
-  }
-
-  const token = authHeader.substring(7); // Remove "Bearer " prefix
-
-  const tokensMatch =
-    token.length === requiredToken.length &&
-    crypto.timingSafeEqual(Buffer.from(token), Buffer.from(requiredToken));
-
-  if (!tokensMatch) {
-    return res.status(403).json({ error: "Invalid bearer token" });
-  }
-
-  next();
-};
+}
 
 app.post("/mcp", authenticateBearer, async (req, res) => {
+  // Extract query parameters for vault configuration
+  const accountId = (req.query.accountId as string) || process.env.ACCOUNT_ID;
+  const vaultId = (req.query.vaultId as string) || process.env.VAULT_ID;
+  const vaultUrl = (req.query.vaultUrl as string) || process.env.VAULT_URL;
+  const workspaceId =
+    (req.query.workspaceId as string) || process.env.WORKSPACE_ID;
+
+  // Validate vault configuration using extracted validation function
+  const validation = validateVaultConfig({
+    vaultId,
+    vaultUrl,
+    accountId,
+    workspaceId,
+  });
+
+  if (!validation.isValid) {
+    return res.status(400).json({ error: validation.error });
+  }
+
+  if (!req.skyflowCredentials) {
+    return res.status(401).json({ error: "Credentials are required" });
+  }
+
+  // Use validated config
+  const { vaultId: validatedVaultId, clusterId } = validation.config!;
+
+  // Create per-request Skyflow instance with credentials (bearer token or API key)
+  const skyflowInstance = new Skyflow({
+    vaultConfigs: [
+      {
+        vaultId: validatedVaultId,
+        clusterId: clusterId,
+        credentials: req.skyflowCredentials,
+      },
+    ],
+  });
+
   // Create a new transport for each request to prevent request ID collisions
   const transport = new StreamableHTTPServerTransport({
     sessionIdGenerator: undefined,
@@ -655,16 +583,29 @@ app.post("/mcp", authenticateBearer, async (req, res) => {
     transport.close();
   });
 
-  await server.connect(transport);
-  await transport.handleRequest(req, res, req.body);
+  // Run the MCP request handling within the AsyncLocalStorage context
+  // This makes the Skyflow instance available to all tools via getCurrentSkyflow()
+  await requestContextStorage.run(
+    { skyflow: skyflowInstance, vaultId: validatedVaultId },
+    async () => {
+      await server.connect(transport);
+      await transport.handleRequest(req, res, req.body);
+    }
+  );
 });
 
-const port = parseInt(process.env.PORT || "3000");
-app
-  .listen(port, () => {
-    console.log(`Skyflow MCP Server running on http://localhost:${port}/mcp`);
-  })
-  .on("error", (error) => {
-    console.error("Server error:", error);
-    process.exit(1);
-  });
+// Export the Express app for serverless environments (like Vercel)
+export default app;
+
+// Only start the server if this file is run directly (not imported)
+if (import.meta.url === `file://${process.argv[1]}`) {
+  const port = parseInt(process.env.PORT || "3000");
+  app
+    .listen(port, () => {
+      console.log(`Skyflow MCP Server running on http://localhost:${port}/mcp`);
+    })
+    .on("error", (error) => {
+      console.error("Server error:", error);
+      process.exit(1);
+    });
+}
