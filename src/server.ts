@@ -97,20 +97,21 @@ const server = new McpServer({
 });
 
 /**
- * Skyflow Dehydrate Tool
+ * Skyflow Deidentify Tool
  * Replaces sensitive information in text with placeholder tokens
  */
 server.registerTool(
-  "dehydrate",
+  "deidentify",
   {
     title: "Skyflow Dehydrate Tool",
     description:
-      "Dehydrate sensitive information in strings using Skyflow. This tool accepts a string and returns another string, but with placeholders for sensitive data. The placeholders tell you what they are replacing. For example, a credit card number might be replaced with [CREDIT_CARD_abc123].",
+      `Dehydrate sensitive information in strings using Skyflow. 
+      This tool accepts a string and returns another string, but with placeholders for sensitive data. 
+      The placeholders tell you what they are replacing. 
+      For example, a credit card number might be replaced with [CREDIT_CARD_abc123].`,
     inputSchema: { inputString: z.string().min(1) },
     outputSchema: {
       processedText: z.string(),
-      wordCount: z.number(),
-      charCount: z.number(),
     },
   },
   async ({ inputString }) => {
@@ -119,14 +120,6 @@ server.registerTool(
 
     const options = new DeidentifyTextOptions();
     options.setTokenFormat(tokenFormat);
-    // TODO: add support for custom restrict regex list, include in the tool input schema
-    // options.setRestrictRegexList([
-    //   "/.{3,}@[a-zA-Z]{2,}\.[a-zA-Z]{2,}/g", // Email addresses with at least 3 characters before '@'
-    // ]);
-    // TODO: add support for custom allow regex list, include in the tool input schema. Note that allow wins over restrict if the same pattern is in both lists.
-    // options.setAllowRegexList([
-    //   "/.{3,}@[a-zA-Z]{2,}\.[a-zA-Z]{2,}/g", // Email addresses with at least 3 characters before '@'
-    // ]);
 
     // Get the per-request Skyflow instance
     const skyflow = getCurrentSkyflow();
@@ -135,10 +128,10 @@ server.registerTool(
       .detect()
       .deidentifyText(new DeidentifyTextRequest(inputString), options);
 
+    // Your API call goes here
+
     const output = {
       processedText: response.processedText,
-      wordCount: response.wordCount,
-      charCount: response.charCount,
     };
 
     return {
@@ -156,17 +149,17 @@ server.registerTool(
   "rehydrate",
   {
     title: "Skyflow Rehydrate Tool",
-    description:
-      "Rehydrate previously dehydrated sensitive information in strings using Skyflow. This tool accepts a string with redacted placeholders (like [CREDIT_CARD_abc123]) and returns the original sensitive data.",
-    inputSchema: { inputString: z.string().min(1) },
+    description: `Rehydrate previously dehydrated sensitive information in strings using Skyflow. 
+      This tool accepts a string with redacted placeholders (like [CREDIT_CARD_abc123]) and returns the original sensitive data.`,
+    inputSchema: {
+      inputString: z.string().min(1),
+    },
     outputSchema: {
       processedText: z.string(),
     },
   },
   async ({ inputString }) => {
-    // Get the per-request Skyflow instance
-    const skyflow = getCurrentSkyflow();
-
+    const skyflow = getCurrentSkyflow(); // Get the per-request Skyflow instance
     const response = await skyflow
       .detect()
       .reidentifyText(new ReidentifyTextRequest(inputString));
@@ -409,7 +402,9 @@ server.registerTool(
       }
 
       if (outputTranscription) {
-        options.setOutputTranscription(getTranscriptionEnum(outputTranscription));
+        options.setOutputTranscription(
+          getTranscriptionEnum(outputTranscription)
+        );
       }
 
       if (pixelDensity) {
@@ -575,9 +570,13 @@ app.post("/mcp", authenticateBearer, async (req, res) => {
       ],
     });
   } catch (error) {
-    console.log("Skyflow SDK initialization failed:", error instanceof Error ? error.message : "Unknown error");
+    console.log(
+      "Skyflow SDK initialization failed:",
+      error instanceof Error ? error.message : "Unknown error"
+    );
     return res.status(401).json({
-      error: "Invalid credentials. Please provide valid Skyflow bearer token or API key."
+      error:
+        "Invalid credentials. Please provide valid Skyflow bearer token or API key.",
     });
   }
 
@@ -617,3 +616,12 @@ if (import.meta.url === `file://${process.argv[1]}`) {
       process.exit(1);
     });
 }
+
+    // TODO: add support for custom restrict regex list, include in the tool input schema
+    // options.setRestrictRegexList([
+    //   "/.{3,}@[a-zA-Z]{2,}\.[a-zA-Z]{2,}/g", // Email addresses with at least 3 characters before '@'
+    // ]);
+    // TODO: add support for custom allow regex list, include in the tool input schema. Note that allow wins over restrict if the same pattern is in both lists.
+    // options.setAllowRegexList([
+    //   "/.{3,}@[a-zA-Z]{2,}\.[a-zA-Z]{2,}/g", // Email addresses with at least 3 characters before '@'
+    // ]);
